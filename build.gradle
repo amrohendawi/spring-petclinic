@@ -6,6 +6,7 @@ plugins {
   id 'org.cyclonedx.bom' version '1.10.0'
   id 'io.spring.javaformat' version '0.0.43'
   id "io.spring.nohttp" version "0.0.11"
+  id 'info.solidsoft.pitest' version '1.15.0'
 }
 
 apply plugin: 'java'
@@ -18,8 +19,16 @@ group = 'org.springframework.samples'
 version = '3.4.0'
 
 java {
-  sourceCompatibility = JavaVersion.VERSION_17
+  sourceCompatibility = JavaVersion.VERSION_20
 }
+
+pitest {
+  junit5PluginVersion = '1.2.1'
+  pitestVersion = '1.15.0'
+  threads = 8 // Number of threads to speed up testing
+  outputFormats = ['XML']
+}
+
 
 repositories {
   mavenCentral()
