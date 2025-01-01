@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -242,6 +243,45 @@ class ClinicServiceTests {
 			.element(0)
 			.extracting(Visit::getDate)
 			.isNotNull();
+	}
+
+	@Test
+	void shouldThrowExceptionWhenAddingVisitWithNullPetId() {
+		Optional<Owner> optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		Owner owner6 = optionalOwner.get();
+
+		Visit visit = new Visit();
+		visit.setDescription("test");
+
+		assertThatThrownBy(() -> owner6.addVisit(null, visit))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("Pet identifier must not be null!");
+	}
+
+	@Test
+	void shouldThrowExceptionWhenAddingVisitWithNullVisit() {
+		Optional<Owner> optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		Owner owner6 = optionalOwner.get();
+
+		assertThatThrownBy(() -> owner6.addVisit(7, null))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("Visit must not be null!");
+	}
+
+	@Test
+	void shouldThrowExceptionWhenAddingVisitToInvalidPetId() {
+		Optional<Owner> optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		Owner owner6 = optionalOwner.get();
+
+		Visit visit = new Visit();
+		visit.setDescription("test");
+
+		assertThatThrownBy(() -> owner6.addVisit(999, visit))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("Invalid Pet identifier!");
 	}
 
 }
