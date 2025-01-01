@@ -98,6 +98,14 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// Added assertion to verify toString method
+		String ownerString = owner.toString();
+		assertThat(ownerString).contains("id=" + owner.getId());
+		assertThat(ownerString).contains("lastName=" + owner.getLastName());
+		assertThat(ownerString).contains("firstName=" + owner.getFirstName());
+		assertThat(ownerString).contains("address=" + owner.getAddress());
+		assertThat(ownerString).contains("city=" + owner.getCity());
+		assertThat(ownerString).contains("telephone=" + owner.getTelephone());
 	}
 
 	@Test
