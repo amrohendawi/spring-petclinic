@@ -223,6 +223,12 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
+		// Fetch owner again to ensure pet visits are updated in the database
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		pet7 = owner6.getPet(7);
+
 		assertThat(pet7.getVisits()) //
 			.hasSize(found + 1) //
 			.allMatch(value -> value.getId() != null);
