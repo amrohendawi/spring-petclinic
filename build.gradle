@@ -1,4 +1,8 @@
 plugins {
+    id "info.solidsoft.pitest" version "1.9.11"
+}
+
+plugins {
   id 'java'
   id 'org.springframework.boot' version '3.4.0'
   id 'io.spring.dependency-management' version '1.1.6'
@@ -88,3 +92,13 @@ checkFormatAotTest.enabled = false
 
 formatAot.enabled = false
 formatAotTest.enabled = false
+
+pitest {
+  junit5PluginVersion = '1.2.1'
+  pitestVersion = '1.15.0'
+  threads = 8 // Number of threads to speed up testing
+  outputFormats = ['XML']
+  detectInlinedCode = true
+  exportLineCoverage = true
+  timestampedReports = false
+}
