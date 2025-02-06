@@ -52,8 +52,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But
+ * Author: Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -227,6 +227,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			// Additional assertions to validate the behavior of Owner.getPet
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Assert that when querying for an existing pet "Max" the pet is found
+				org.junit.jupiter.api.Assertions.assertNotNull(owner.getPet("Max"), "Expected pet 'Max' to be found");
+				// Assert that when querying for a non-existent pet, null is returned
+				org.junit.jupiter.api.Assertions.assertNull(owner.getPet("Rover"), "Expected pet 'Rover' to be null");
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
