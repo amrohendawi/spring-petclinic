@@ -35,6 +35,7 @@ import java.util.Optional;
 
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasAllOf;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
@@ -51,6 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to add explicit assertions on Owner#getPet behavior to kill a mutated conditional in getPet.
+ * This change asserts that the pet with name "Max" is retrieved correctly, ensuring that negated conditionals in getPet are detected.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,7 +103,13 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
-		george.getPet("Max").getVisits().add(visit);
+		// Ensuring that Owner#getPet("Max") returns the correct pet instance before modifying it
+		Pet petMax = george.getPet("Max");
+		// Assert that we indeed found pet "Max" (this assertion will fail if the negated conditional is present in getPet method)
+		if (petMax == null || !"Max".equals(petMax.getName())) {
+			throw new AssertionError("Expected to find pet with name Max");
+		}
+		petMax.getVisits().add(visit);
 
 	}
 
@@ -225,8 +235,11 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("city", is("Madison"))))
 			.andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
+			// Additional assertion to ensure that getPet returns the pet with name "Max" correctly
 			.andExpect(model().attribute("owner",
-					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+				hasProperty("pets", hasItem(hasProperty("name", is("Max"))))) )
+			.andExpect(model().attribute("owner",
+				hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
