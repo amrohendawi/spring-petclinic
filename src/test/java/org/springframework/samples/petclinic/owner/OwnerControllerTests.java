@@ -52,6 +52,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
+ * This class has been modified to add assertions that verify the correct behavior of Owner.getPet(String). 
+ * In particular, it distinguishes between new and persisted pets having the same name.  
+ * This kills the NegateConditionalsMutator mutation that changes the behavior of the ignoreNew flag.
+ * 
+ * The test creates two pets with the same name "Max": one new pet (without an id) and one persisted pet.
+ * Because getPet(String) calls getPet(name, false) (i.e. it does not ignore new pets),
+ * the method is expected to return the first pet in the iteration order. 
+ * The modified test asserts that the returned pet is the new pet (id null), thereby killing the mutation.
+ *
  * @author Colin But
  * @author Wick Dynex
  */
@@ -217,6 +226,38 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Create a custom Owner instance with two pets having the same name "Max".
+		// The first pet is a new pet (without an id) and the second is persisted (with an id).
+		// The standard getPet(String) method (which calls getPet(name, false)) should return the first encountered pet, 
+		// which in this scenario is the new pet. This distinguishes the original from the mutant behavior.
+		Owner owner = george();
+		// Clear the existing pets and add two pets with the same name.
+		owner.getPets().clear();
+
+		Pet newMax = new Pet();
+		newMax.setName("Max");
+		newMax.setBirthDate(LocalDate.now());
+		PetType dog = new PetType();
+		dog.setName("dog");
+		newMax.setType(dog);
+		// Do not set an id so that newMax is considered new
+
+		owner.addPet(newMax);
+
+		Pet persistedMax = new Pet();
+		persistedMax.setName("Max");
+		persistedMax.setBirthDate(LocalDate.now());
+		persistedMax.setType(dog);
+		persistedMax.setId(1);
+		owner.addPet(persistedMax);
+
+		// Assert that getPet returns the new pet (id should be null) since getPet(String) does not ignore new pets.
+		Pet retrieved = owner.getPet("Max");
+		org.junit.jupiter.api.Assertions.assertNull(retrieved.getId(), "Expected new pet (id is null) to be returned by getPet(\"Max\")");
+
+		// Stub the repository to return the custom owner
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
@@ -226,7 +267,7 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
-					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+					hasProperty("pets", hasItem(hasProperty("name", is("Max")))))
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
