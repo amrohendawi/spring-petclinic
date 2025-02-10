@@ -225,6 +225,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("city", is("Madison"))))
 			.andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
+			// Added assertion to directly verify the behavior of getPet method
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				Pet pet = owner.getPet("Max");
+				if (pet == null || !"Max".equals(pet.getName())) {
+					throw new AssertionError("Expected pet with name 'Max' to be returned by getPet");
+				}
+			})
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
