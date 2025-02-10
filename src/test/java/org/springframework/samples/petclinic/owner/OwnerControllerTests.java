@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
@@ -40,6 +41,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +50,20 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This test class has been modified to additionally test the getPet method behavior,
+ * specifically verifying that when the ignoreNew flag is true, newly created pets (without an id) are not returned.
+ * This change ensures that a previously survived mutation (via NegateConditionalsMutator) is killed.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -91,6 +101,7 @@ class OwnerControllerTests {
 	void setup() {
 
 		Owner george = george();
+		// Adding an existing pet (not new) with id set, so getPet should return it regardless of ignoreNew flag
 		given(this.owners.findByLastNameStartingWith(eq("Franklin"), any(Pageable.class)))
 			.willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
@@ -100,7 +111,16 @@ class OwnerControllerTests {
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
-
+		
+		// Adding an additional pet that is considered new (no id assigned) to test getPet with ignoreNew flag
+		Pet snowy = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		snowy.setType(cat);
+		snowy.setName("Snowy");
+		snowy.setBirthDate(LocalDate.now());
+		// Note: Not setting an id means this pet is new
+		george.addPet(snowy);
 	}
 
 	@Test
@@ -217,7 +237,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
+		MvcResult mvcResult = mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
 			.andExpect(model().attribute("owner", hasProperty("firstName", is("George"))))
@@ -227,7 +247,19 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andReturn();
+		
+		// Retrieve the owner object from the model to test the getPet method directly
+		Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+		
+		// Verify that for an existing pet ("Max") which is not new, both getPet(String) and getPet(String, true) return the pet
+		assertNotNull(owner.getPet("Max"));
+		assertNotNull(owner.getPet("Max", true));
+		
+		// Verify that for the new pet ("Snowy"), getPet(String) returns the pet but getPet(String, true) returns null
+		assertNotNull(owner.getPet("Snowy"));
+		assertNull(owner.getPet("Snowy", true));
 	}
 
 	@Test
@@ -241,9 +273,9 @@ class OwnerControllerTests {
 		owner.setAddress("Center Street");
 		owner.setCity("New York");
 		owner.setTelephone("0123456789");
-
+		
 		when(owners.findById(pathOwnerId)).thenReturn(Optional.of(owner));
-
+		
 		mockMvc.perform(MockMvcRequestBuilders.post("/owners/{ownerId}/edit", pathOwnerId).flashAttr("owner", owner))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
