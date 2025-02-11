@@ -48,9 +48,15 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * This class has been modified to add additional assertions on the Owner.getPet method
+ * to ensure that the correct pet is returned even if the conditional in getPet is negated
+ * by a mutation. In particular, it verifies that getPet performs a case-insensitive search.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +105,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call exercises the getPet method to add a visit to the pet named "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +234,15 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				// Additional assertion to verify that getPet works correctly with different case
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Test getPet with a different case to kill the negated conditional mutation
+				Pet pet = owner.getPet("maX");
+				assertNotNull(pet, "getPet should return a pet even when case differs");
+				assertEquals("Max", pet.getName(), "getPet should return the pet with name 'Max'");
+			});
 	}
 
 	@Test
