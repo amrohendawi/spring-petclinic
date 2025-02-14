@@ -124,6 +124,9 @@ public class PostgresIntegrationTests {
 
 					assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
 
+					// Additional check to ensure toString() does not return an empty string
+					assertThat(sourceProperty.toString()).isNotEmpty();
+
 					String value = sourceProperty.toString();
 					if (resolved.equals(value)) {
 						log.info(name + "=" + resolved);
