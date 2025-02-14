@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +42,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * This class has been modified to include assertions for the NamedEntity.toString method
+ * to detect mutations that replace the return value with an empty string.
+ *
+ * Additionally, an assertion was added for the Owner.toString method to ensure it does
+ * not return an empty string after a mutation.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -96,6 +103,20 @@ class PetControllerTests {
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		// Additional assertion to check the NamedEntity.toString implementation for Pet
+		// This ensures that toString does not return an empty string due to mutation.
+		Pet pet = new Pet();
+		pet.setName("Betty");
+		Assertions.assertThat(pet.toString()).contains("Betty");
+
+		// Additional assertion for Owner.toString to catch mutations that return an empty
+		// string.
+		Owner owner = new Owner();
+		// Assuming Owner has firstName and lastName properties as in PetClinic sample
+		owner.setFirstName("George");
+		owner.setLastName("Franklin");
+		Assertions.assertThat(owner.toString()).contains("George").contains("Franklin");
 	}
 
 	@Nested
