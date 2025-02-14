@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Arrays;
@@ -122,7 +123,12 @@ public class PostgresIntegrationTests {
 
 					assertNotNull(sourceProperty, "source property was expecting an object but is null.");
 
+					// Ensure toString() does not return null
 					assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
+
+					// New assertion to check that toString() does not return an empty
+					// string
+					assertNotEquals("", sourceProperty.toString(), "source property toString() returned empty string.");
 
 					String value = sourceProperty.toString();
 					if (resolved.equals(value)) {
@@ -138,8 +144,8 @@ public class PostgresIntegrationTests {
 		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
 			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
 			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
+				if (source instanceof EnumerablePropertySource) {
+					sources.add((EnumerablePropertySource<?>) source);
 				}
 			}
 			return sources;
