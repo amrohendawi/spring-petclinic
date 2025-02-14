@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +53,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to address mutation surviving in Owner.getPet method by adding an assertion to
+ * verify that getPet returns the expected pet instance for an existing pet name.
+ *
+ * Author: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,8 +102,11 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
-		george.getPet("Max").getVisits().add(visit);
-
+		// The following line uses getPet to retrieve the pet by name and add a visit
+		// Added assertion to ensure that getPet returns the expected non-null pet
+		Pet pet = george.getPet("Max");
+		assertNotNull(pet, "Expected pet named 'Max' to be found by getPet");
+		pet.getVisits().add(visit);
 	}
 
 	@Test
