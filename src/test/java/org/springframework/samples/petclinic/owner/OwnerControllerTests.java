@@ -52,8 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -248,6 +247,17 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	@Test
+	void testGetPetWithNonExistentPetName() throws Exception {
+		Owner george = george();
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
+
+		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("owner",
+					hasProperty("pets", not(hasItem(hasProperty("name", is("NonExistentPet")))))));
 	}
 
 }
