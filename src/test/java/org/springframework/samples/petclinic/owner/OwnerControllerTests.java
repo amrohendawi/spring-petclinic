@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +49,16 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -217,6 +222,12 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Additional assertions to verify the correct behavior of getPet method
+		// This addresses the negated conditional mutation in Owner.getPet
+		Owner testOwner = george();
+		assertNotNull(testOwner.getPet("Max"), "Existing pet 'Max' should be returned by getPet method");
+		assertNull(testOwner.getPet("NonExisting"), "Non-existing pet should return null by getPet method");
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
