@@ -52,8 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,6 +98,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This line exercises the Owner.getPet(String) method
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +227,18 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			// Added extra assertion to ensure getPet(String) returns the correct pet
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				Pet pet = owner.getPet("Max");
+				org.junit.jupiter.api.Assertions.assertNotNull(pet,
+						"Expected pet named Max to be returned by getPet()");
+				org.junit.jupiter.api.Assertions.assertEquals("Max", pet.getName(),
+						"getPet() should return the pet with name 'Max'");
+				org.junit.jupiter.api.Assertions.assertFalse(pet.getVisits().isEmpty(),
+						"Expected pet to have at least one visit");
+			});
 	}
 
 	@Test
