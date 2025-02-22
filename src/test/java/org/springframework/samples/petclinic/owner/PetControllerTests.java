@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +85,19 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(result -> {
+				// Check that the toString method of the pet (which extends NamedEntity)
+				// returns a non-empty string
+				Pet pet = (Pet) result.getModelAndView().getModel().get("pet");
+				Assertions.assertNotEquals("", pet.toString(), "NamedEntity.toString() should not be empty");
+
+				// New assertion: Check that the Owner.toString method returns a non-empty
+				// string
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				Assertions.assertNotEquals("", owner.toString(), "Owner.toString() should not be empty");
+			});
 	}
 
 	@Test
