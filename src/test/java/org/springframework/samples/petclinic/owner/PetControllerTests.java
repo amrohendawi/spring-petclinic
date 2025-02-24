@@ -30,8 +30,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,9 +47,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * The modification below adds an extra assertion in the testInitCreationForm() method to
+ * verify that the toString() method of the PetType (which extends NamedEntity) returns
+ * the actual name. This addresses the mutation where NamedEntity::toString could
+ * erroneously return an empty string. Additionally, this modification now also asserts
+ * the correct behavior of the Owner toString() method by checking that it returns the
+ * owner's full name. This ensures that any mutation affecting the Owner toString()
+ * behavior will be caught through the integration test.
+ *
+ * Authors: Colin But, Wick Dynex
  */
+
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
 @DisabledInNativeImage
@@ -69,6 +82,10 @@ class PetControllerTests {
 		given(this.owners.findPetTypes()).willReturn(Lists.newArrayList(cat));
 
 		Owner owner = new Owner();
+		// Set owner's properties to enable verification of toString() method
+		owner.setFirstName("Joe");
+		owner.setLastName("Bloggs");
+
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
@@ -85,7 +102,23 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("types"))
+			// The following assertion checks that for each PetType in the model,
+			// the toString() method returns the PetType's name. This ensures that a
+			// mutation
+			// which causes NamedEntity.toString() to return an empty string will be
+			// caught.
+			.andDo(result -> {
+				@SuppressWarnings("unchecked")
+				List<PetType> types = (List<PetType>) result.getModelAndView().getModel().get("types");
+				for (PetType petType : types) {
+					assertEquals(petType.getName(), petType.toString(), "PetType toString() should return its name");
+				}
+				// Additional check for Owner toString() mutation
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				assertEquals("Joe Bloggs", owner.toString(), "Owner toString() should return the owner's full name");
+			});
 	}
 
 	@Test
