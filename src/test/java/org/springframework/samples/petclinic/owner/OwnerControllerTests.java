@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,10 +49,17 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to assert correct behavior of Owner#getPet(String) in order to catch the
+ * negated conditional mutation.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,7 +108,12 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
-		george.getPet("Max").getVisits().add(visit);
+		// Modified: explicitly check that getPet returns the correct pet to catch
+		// mutation errors
+		Pet pet = george.getPet("Max");
+		assertNotNull(pet, "getPet should return a pet for name 'Max'");
+		assertEquals("Max", pet.getName(), "getPet should return the pet with name 'Max'");
+		pet.getVisits().add(visit);
 
 	}
 
@@ -227,7 +241,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(mvcResult -> {
+				// Additional check for getPet method to catch negated conditional mutant
+				Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+				Pet pet = owner.getPet("Max");
+				assertNotNull(pet, "getPet('Max') should not return null");
+				assertEquals("Max", pet.getName(), "getPet('Max') should return pet with name 'Max'");
+			});
 	}
 
 	@Test
