@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -76,6 +77,8 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// Create pet Max
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
@@ -84,6 +87,17 @@ class OwnerControllerTests {
 		max.setBirthDate(LocalDate.now());
 		george.addPet(max);
 		max.setId(1);
+
+		// Added an additional pet to ensure proper behavior of getPet(String) method
+		Pet bella = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now().minusYears(1));
+		george.addPet(bella);
+		bella.setId(2);
+
 		return george;
 	}
 
@@ -97,9 +111,15 @@ class OwnerControllerTests {
 		given(this.owners.findAll(any(Pageable.class))).willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
+
+		// Ensure we are adding a visit to the correct pet retrieved by getPet
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
-		george.getPet("Max").getVisits().add(visit);
+		Pet pet = george.getPet("Max");
+		// If the correct pet is not returned, this will trigger a NullPointerException
+		// and fail the tests
+		assertNotNull(pet, "getPet(\"Max\") should return a pet instance");
+		pet.getVisits().add(visit);
 
 	}
 
@@ -227,6 +247,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			.andExpect(model().attribute("owner", hasProperty("pets", hasItem(hasProperty("name", is("Max"))))))
+			// Additional assertion to directly test the getPet method behavior
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				Pet pet = owner.getPet("Max");
+				assertNotNull(pet, "Pet Max should not be null");
+				assertEquals("Max", pet.getName(), "getPet should return the pet with the correct name");
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
