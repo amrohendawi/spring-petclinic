@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +85,24 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(result -> {
+				Object petObj = result.getModelAndView().getModel().get("pet");
+				if (petObj != null) {
+					String petString = petObj.toString();
+					// Assert that the NamedEntity.toString() method does not return an
+					// empty string
+					assertNotEquals("", petString, "NamedEntity toString() returned an empty string");
+				}
+				Object ownerObj = result.getModelAndView().getModel().get("owner");
+				if (ownerObj != null) {
+					String ownerString = ownerObj.toString();
+					// Assert that the Owner.toString() method does not return an empty
+					// string
+					assertNotEquals("", ownerString, "Owner toString() returned an empty string");
+				}
+			});
 	}
 
 	@Test
