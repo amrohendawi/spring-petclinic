@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -42,8 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class has been modified to include an assertion for the NamedEntity.toString()
+ * method, ensuring it does not return an empty string and contains expected owner
+ * details. This addresses the PiTest mutation that replaced the return value of the
+ * toString method with an empty string.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -96,6 +102,14 @@ class PetControllerTests {
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		// Enhanced assertion to verify that NamedEntity.toString() does not return an
+		// empty string
+		// and contains the owner's first and last name.
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		assertThat(owner.toString()).isNotEmpty().contains("John").contains("Doe");
 	}
 
 	@Nested
