@@ -28,10 +28,13 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,11 +42,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+// Importing NamedEntity to assert on its toString() method
+import org.springframework.samples.petclinic.model.NamedEntity;
+
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to assert that NamedEntity.toString() does not return an empty string,
+ * addressing a mutation where toString was replaced with an empty string. Now also
+ * asserts that Owner.toString() returns a non-empty string.
+ *
+ * author Colin But author Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +94,31 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(result -> {
+				// Assert that the pet's toString() is not empty
+				Object petObj = result.getModelAndView().getModel().get("pet");
+				if (petObj instanceof NamedEntity) {
+					NamedEntity ne = (NamedEntity) petObj;
+					assertFalse(ne.toString().isEmpty(), "NamedEntity.toString() should not return an empty string");
+				}
+				else {
+					fail("pet is not an instance of NamedEntity");
+				}
+			})
+			.andExpect(result -> {
+				// Additional assertion: Check that the owner's toString() is not empty to
+				// catch mutation in Owner::toString
+				Object ownerObj = result.getModelAndView().getModel().get("owner");
+				if (ownerObj instanceof NamedEntity) {
+					NamedEntity neOwner = (NamedEntity) ownerObj;
+					assertFalse(neOwner.toString().isEmpty(), "Owner.toString() should not return an empty string");
+				}
+				else {
+					fail("owner is not an instance of NamedEntity");
+				}
+			});
 	}
 
 	@Test
