@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -42,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -96,6 +96,32 @@ class PetControllerTests {
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		// Additional assertion to ensure that NamedEntity.toString() returns a meaningful
+		// string for Pet.
+		Pet pet = new Pet();
+		pet.setName("Betty");
+		pet.setId(1);
+		String petStringRepresentation = pet.toString();
+		Assertions.assertThat(petStringRepresentation)
+			.as("NamedEntity.toString() should include id and name")
+			.isNotEmpty()
+			.contains(String.valueOf(pet.getId()))
+			.contains(pet.getName());
+
+		// Additional assertion to ensure that Owner.toString() returns a meaningful
+		// string. This addresses the PiTest mutation for Owner::toString.
+		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
+		owner.setFirstName("Joe");
+		owner.setLastName("Bloggs");
+		String ownerStringRepresentation = owner.toString();
+		Assertions.assertThat(ownerStringRepresentation)
+			.as("Owner.toString() should include id, firstName, and lastName")
+			.isNotEmpty()
+			.contains(String.valueOf(owner.getId()))
+			.contains(owner.getFirstName())
+			.contains(owner.getLastName());
 	}
 
 	@Nested
