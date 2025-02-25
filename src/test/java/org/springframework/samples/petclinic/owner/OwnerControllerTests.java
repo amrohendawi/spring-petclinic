@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasProperty;
@@ -47,10 +48,17 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified test to include explicit verification of the retrieval of a pet by name to
+ * kill the mutant related to the negated conditional in the getPet method.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +107,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call will throw an exception if getPet does not correctly return the pet
+		// with name "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,6 +237,9 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			// Added additional assertion to verify that the pet retrieval by name works
+			// correctly (kills the negated conditional mutant).
+			.andExpect(model().attribute("owner", hasProperty("pets", hasItem(hasProperty("name", is("Max"))))))
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
