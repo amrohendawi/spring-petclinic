@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -42,8 +43,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to include an assertion that verifies NamedEntity's toString method returns a
+ * non-empty string. This ensures that if the toString method is mutated to return an
+ * empty string, the test will detect the error.
+ *
+ * In addition to verifying the pet's string representation, the tests now also verify the
+ * owner's toString output. This modification catches mutations in Owner::toString that
+ * might have been introduced by PiTest.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +93,16 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("owner"))
+			.andDo(result -> {
+				// Retrieve the pet from the model and assert its toString is not empty
+				Object pet = result.getModelAndView().getModel().get("pet");
+				Assertions.assertThat(pet.toString()).isNotEmpty();
+				// Additionally, retrieve the owner and assert its toString is not empty
+				Object owner = result.getModelAndView().getModel().get("owner");
+				Assertions.assertThat(owner.toString()).isNotEmpty();
+			});
 	}
 
 	@Test
@@ -161,7 +178,14 @@ class PetControllerTests {
 			mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("pet"))
-				.andExpect(view().name("pets/createOrUpdatePetForm"));
+				.andExpect(model().attributeExists("owner"))
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				.andDo(result -> {
+					// Retrieve the owner from the model and assert its toString is not
+					// empty
+					Object owner = result.getModelAndView().getModel().get("owner");
+					Assertions.assertThat(owner.toString()).isNotEmpty();
+				});
 		}
 
 	}
