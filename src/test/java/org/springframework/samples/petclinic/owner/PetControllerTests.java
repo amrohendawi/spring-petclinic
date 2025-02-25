@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +43,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to assert that the NamedEntity#toString method returns a non-empty value. This
+ * change ensures that the mutated method (returning empty string) is detected by these
+ * tests.
+ *
+ * Additionally, assertions have been added to verify that the Owner's toString method
+ * returns a non-empty value, addressing the mutation in Owner::toString.
+ *
+ * author Colin But author Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +92,12 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(result -> {
+				Object pet = result.getModelAndView().getModel().get("pet");
+				// Ensure that the NamedEntity toString method returns a non-empty value
+				assertFalse(pet.toString().isEmpty(), "NamedEntity toString should not be empty");
+			});
 	}
 
 	@Test
@@ -111,7 +123,12 @@ class PetControllerTests {
 				.andExpect(model().attributeHasFieldErrors("pet", "name"))
 				.andExpect(model().attributeHasFieldErrorCode("pet", "name", "required"))
 				.andExpect(status().isOk())
-				.andExpect(view().name("pets/createOrUpdatePetForm"));
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				// Additional assertion to check Owner's toString is not empty
+				.andExpect(result -> {
+					Object owner = result.getModelAndView().getModel().get("owner");
+					assertFalse(owner.toString().isEmpty(), "NamedEntity toString should not be empty for owner");
+				});
 		}
 
 		@Test
@@ -161,7 +178,13 @@ class PetControllerTests {
 			mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("pet"))
-				.andExpect(view().name("pets/createOrUpdatePetForm"));
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				.andExpect(result -> {
+					Object pet = result.getModelAndView().getModel().get("pet");
+					// Ensure that the NamedEntity toString method returns a non-empty
+					// value
+					assertFalse(pet.toString().isEmpty(), "NamedEntity toString should not be empty");
+				});
 		}
 
 	}
@@ -188,7 +211,12 @@ class PetControllerTests {
 				.andExpect(model().attributeHasErrors("pet"))
 				.andExpect(model().attributeHasFieldErrors("pet", "birthDate"))
 				.andExpect(model().attributeHasFieldErrorCode("pet", "birthDate", "typeMismatch"))
-				.andExpect(view().name("pets/createOrUpdatePetForm"));
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				// Additional assertion to check Owner's toString is not empty
+				.andExpect(result -> {
+					Object owner = result.getModelAndView().getModel().get("owner");
+					assertFalse(owner.toString().isEmpty(), "NamedEntity toString should not be empty for owner");
+				});
 		}
 
 		@Test
