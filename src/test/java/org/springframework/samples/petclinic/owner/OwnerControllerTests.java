@@ -47,10 +47,18 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified tests to add explicit assertion on Pet#getName to catch mutation in
+ * Owner#getPet method. This ensures that the pet returned by getPet has the correct name,
+ * "Max".
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +107,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Ensure that getPet returns a pet with name "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -225,6 +234,8 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("city", is("Madison"))))
 			.andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
+			// Added explicit check to ensure that getPet returns the pet with name "Max"
+			.andExpect(model().attribute("owner", hasProperty("pets", hasItem(hasProperty("name", is("Max"))))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
