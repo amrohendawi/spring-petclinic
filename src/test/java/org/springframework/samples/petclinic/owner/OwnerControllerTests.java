@@ -48,6 +48,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test class for {@link OwnerController}
@@ -99,6 +101,10 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call tests the getPet method and ensures that a pet with name "Max" is
+		// retrieved correctly
+		// If the mutation (negated conditional) were present, this call would not
+		// retrieve the correct pet
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +233,15 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Additional assertions to verify the correct behavior of getPet
+				Pet pet = owner.getPet("Max");
+				assertNotNull(pet, "Expected pet with name 'Max' to be returned by getPet");
+				assertEquals("Max", pet.getName(), "Expected getPet to return the pet with the correct name 'Max'");
+				assertEquals(true, pet.getVisits().size() > 0, "Expected pet to have at least one visit");
+			});
 	}
 
 	@Test
