@@ -32,6 +32,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +44,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified tests to cover NamedEntity.toString method to guard against mutations that
+ * return an empty string. This ensures that toString on any NamedEntity (or subclass)
+ * returns a meaningful output.
+ *
+ * Additionally, added assertions for Owner.toString to prevent mutations that return an
+ * empty string.
+ *
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -96,6 +104,28 @@ class PetControllerTests {
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		// Additional assertions to cover the NamedEntity.toString behavior
+		// Create an instance of PetType (which extends NamedEntity) and set its name
+		PetType petType = new PetType();
+		petType.setName("hamster");
+		// The toString method should not return an empty string
+		String petTypeToStringOutput = petType.toString();
+		assertFalse(petTypeToStringOutput.isEmpty(), "NamedEntity toString should not return an empty string");
+		// Also, it should contain the name, ensuring a meaningful representation
+		assertTrue(petTypeToStringOutput.contains("hamster"), "NamedEntity toString should include the name");
+
+		// Additional assertions to cover Owner.toString behavior to fix the survived
+		// mutation
+		Owner owner = new Owner();
+		// Assuming Owner has firstName and lastName properties for meaningful output
+		owner.setFirstName("Joe");
+		owner.setLastName("Bloggs");
+		String ownerToStringOutput = owner.toString();
+		assertFalse(ownerToStringOutput.isEmpty(), "Owner toString should not return an empty string");
+		// Check that the output includes either first or last name
+		assertTrue(ownerToStringOutput.contains("Joe") || ownerToStringOutput.contains("Bloggs"),
+				"Owner toString should include the owner's name");
 	}
 
 	@Nested
