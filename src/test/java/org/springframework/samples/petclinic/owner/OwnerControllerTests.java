@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
@@ -51,6 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to add an assertion checking the behavior of Owner#getPet for non-existent
+ * pets to expose the negated conditional mutation.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -100,7 +104,6 @@ class OwnerControllerTests {
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,7 +230,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Additional assertion to ensure that getPet returns null for a pet that
+				// does not exist
+				Assertions.assertNull(owner.getPet("NonExistent"),
+						"Expected getPet to return null for a nonexistent pet name");
+			});
 	}
 
 	@Test
