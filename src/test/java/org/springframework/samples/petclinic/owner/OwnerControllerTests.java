@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +49,20 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified test to verify the correct behavior of Owner.getPet() method after surviving
+ * the NegateConditionalsMutator mutation. The test now asserts that getPet("Max") returns
+ * a non-null pet and getPet("unknown") returns null.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -100,7 +109,6 @@ class OwnerControllerTests {
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,6 +235,15 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			// Additional assertions to verify the correct behavior of getPet method
+			// against the mutation
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the pet when a valid name is provided
+				assertNotNull(owner.getPet("Max"), "Expected to find pet 'Max'");
+				// Verify that getPet returns null when the pet is not present
+				assertNull(owner.getPet("unknown"), "Expected to not find a pet with name 'unknown'");
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
