@@ -28,10 +28,12 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.samples.petclinic.model.NamedEntity;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -85,7 +86,23 @@ class PetControllerTests {
 		mockMvc.perform(get("/owners/{ownerId}/pets/new", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
-			.andExpect(model().attributeExists("pet"));
+			.andExpect(model().attributeExists("pet"))
+			.andExpect(model().attributeExists("owner"))
+			.andExpect(result -> {
+				Object petObj = result.getModelAndView().getModel().get("pet");
+				if (petObj instanceof NamedEntity) {
+					NamedEntity namedEntity = (NamedEntity) petObj;
+					String toStr = namedEntity.toString();
+					assertFalse(toStr.isEmpty(), "NamedEntity.toString() should not be empty");
+				}
+			})
+			.andExpect(result -> {
+				Object ownerObj = result.getModelAndView().getModel().get("owner");
+				if (ownerObj instanceof Owner) {
+					Owner owner = (Owner) ownerObj;
+					assertFalse(owner.toString().isEmpty(), "Owner.toString() should not be empty");
+				}
+			});
 	}
 
 	@Test
