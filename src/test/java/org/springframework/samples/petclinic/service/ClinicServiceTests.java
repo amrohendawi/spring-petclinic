@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -50,11 +51,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
- * script.
+ * script.</li>
  * <li>An {@link org.springframework.context.ApplicationContext ApplicationContext} is
  * also inherited and can be used for explicit bean lookup if necessary.</li>
  * </ul>
@@ -98,6 +99,18 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// Additional assertion to verify that getPet returns null when no pet matches by
+		// name
+		assertThat(owner.getPet("non-existent")).isNull();
+
+		// New assertion to verify that getPet returns null when no pet with given id
+		// exists
+		int nonExistentId = owner.getPets().get(0).getId() + 1000;
+		assertThat(owner.getPet(nonExistentId)).isNull();
+
+		// NEW ASSERTION: Verify getPet(id) returns the correct pet when it exists
+		Pet existingPet = owner.getPets().get(0);
+		assertThat(owner.getPet(existingPet.getId())).isEqualTo(existingPet);
 	}
 
 	@Test
@@ -157,23 +170,51 @@ class ClinicServiceTests {
 
 		int found = owner6.getPets().size();
 
-		Pet pet = new Pet();
-		pet.setName("bowser");
 		Collection<PetType> types = this.owners.findPetTypes();
-		pet.setType(EntityUtils.getById(types, PetType.class, 2));
-		pet.setBirthDate(LocalDate.now());
-		owner6.addPet(pet);
-		assertThat(owner6.getPets()).hasSize(found + 1);
+
+		// Create first pet with name "bowser"
+		Pet pet1 = new Pet();
+		pet1.setName("bowser");
+		pet1.setType(EntityUtils.getById(types, PetType.class, 2));
+		pet1.setBirthDate(LocalDate.now());
+		owner6.addPet(pet1);
+
+		// Create second pet with name "bowserX" to test retrieval of similar but distinct
+		// pet
+		Pet pet2 = new Pet();
+		pet2.setName("bowserX");
+		pet2.setType(EntityUtils.getById(types, PetType.class, 2));
+		pet2.setBirthDate(LocalDate.now());
+		owner6.addPet(pet2);
+
+		assertThat(owner6.getPets()).hasSize(found + 2);
 
 		this.owners.save(owner6);
 
 		optionalOwner = this.owners.findById(6);
 		assertThat(optionalOwner).isPresent();
 		owner6 = optionalOwner.get();
-		assertThat(owner6.getPets()).hasSize(found + 1);
-		// checks that id has been generated
-		pet = owner6.getPet("bowser");
-		assertThat(pet.getId()).isNotNull();
+
+		// Verify that getPet returns the correctly named pet using name-based lookup
+		Pet pet1Retrieved = owner6.getPet("bowser");
+		assertThat(pet1Retrieved).isNotNull();
+		assertThat(pet1Retrieved.getId()).isNotNull();
+
+		Pet pet2Retrieved = owner6.getPet("bowserX");
+		assertThat(pet2Retrieved).isNotNull();
+		assertThat(pet2Retrieved.getId()).isNotNull();
+
+		// NEW ASSERTIONS: Verify that getPet(id) returns the correct pet when it exists
+		assertThat(owner6.getPet(pet1Retrieved.getId())).isEqualTo(pet1Retrieved);
+		assertThat(owner6.getPet(pet2Retrieved.getId())).isEqualTo(pet2Retrieved);
+
+		// Additional negative check: getPet should return null for an id that does not
+		// exist
+		int nonExistentId = Math.max(pet1Retrieved.getId(), pet2Retrieved.getId()) + 1;
+		assertThat(owner6.getPet(nonExistentId)).isNull();
+
+		// When requesting a pet name that does not exist, getPet should return null
+		assertThat(owner6.getPet("non-existent")).isNull();
 	}
 
 	@Test
@@ -182,6 +223,9 @@ class ClinicServiceTests {
 		Optional<Owner> optionalOwner = this.owners.findById(6);
 		assertThat(optionalOwner).isPresent();
 		Owner owner6 = optionalOwner.get();
+
+		// New assertion to verify that getPet with a non-existing id returns null
+		assertThat(owner6.getPet(9999)).isNull();
 
 		Pet pet7 = owner6.getPet(7);
 		String oldName = pet7.getName();
@@ -216,6 +260,11 @@ class ClinicServiceTests {
 		Owner owner6 = optionalOwner.get();
 
 		Pet pet7 = owner6.getPet(7);
+
+		// Verify that passing null parameters throws an exception
+		assertThrows(IllegalArgumentException.class, () -> owner6.addVisit(null, new Visit()));
+		assertThrows(IllegalArgumentException.class, () -> owner6.addVisit(pet7.getId(), null));
+
 		int found = pet7.getVisits().size();
 		Visit visit = new Visit();
 		visit.setDescription("test");
@@ -223,9 +272,7 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		assertThat(pet7.getVisits()).hasSize(found + 1).allMatch(value -> value.getId() != null);
 	}
 
 	@Test
@@ -237,11 +284,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
