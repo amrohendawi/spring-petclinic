@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
@@ -40,6 +41,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +55,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to include additional assertions for Owner.getPet method to kill survived
+ * mutations.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -97,10 +104,22 @@ class OwnerControllerTests {
 		given(this.owners.findAll(any(Pageable.class))).willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
+
+		// Add a visit to existing pet "Max"
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
 
+		// Add a new pet "Buddy" that is considered 'new' (id not set) to cover the branch
+		// where new pets are ignored
+		Pet buddy = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		buddy.setType(cat);
+		buddy.setName("Buddy");
+		buddy.setBirthDate(LocalDate.now());
+		// Note: Not setting buddy id to simulate a new pet
+		george.addPet(buddy);
 	}
 
 	@Test
@@ -217,7 +236,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
+		MvcResult result = mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
 			.andExpect(model().attribute("owner", hasProperty("firstName", is("George"))))
@@ -227,7 +246,19 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andReturn();
+
+		// Additional assertions to verify the behavior of getPet method
+		Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+
+		// Verify that getPet returns the existing pet "Max" regardless of case
+		assertNotNull(owner.getPet("Max"));
+		assertNotNull(owner.getPet("max"));
+
+		// Verify that getPet does not return a pet that is new (in this case "Buddy" has
+		// no id and should be ignored)
+		assertNull(owner.getPet("Buddy"));
 	}
 
 	@Test
