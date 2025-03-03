@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +42,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added test for NamedEntity#toString to ensure its behavior is as expected and to kill
+ * mutations that cause it to return an empty string.
+ *
+ * Additionally, this modification adds assertions for Owner#toString to detect mutations
+ * in Owner.toString() method.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +210,33 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to verify NamedEntity's toString method behavior
+	@Test
+	void testNamedEntityToString() {
+		// Test for Pet (which extends NamedEntity)
+		Pet pet = new Pet();
+		pet.setId(123);
+		pet.setName("Fluffy");
+		String petResult = pet.toString();
+		// The toString method should contain the id and the name
+		assertThat(petResult).isNotEmpty();
+		assertThat(petResult).contains("123");
+		assertThat(petResult).contains("Fluffy");
+
+		// Additional test for Owner to ensure its toString method is not mutated
+		Owner owner = new Owner();
+		owner.setId(456);
+		// Assuming Owner has firstName and lastName properties
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerResult = owner.toString();
+		// The toString method should include the id, first name, and last name
+		assertThat(ownerResult).isNotEmpty();
+		assertThat(ownerResult).contains("456");
+		assertThat(ownerResult).contains("John");
+		assertThat(ownerResult).contains("Doe");
 	}
 
 }
