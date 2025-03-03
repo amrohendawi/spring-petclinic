@@ -48,12 +48,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,6 +101,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Ensure that the pet 'Max' is retrieved correctly and has a visit
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +230,19 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			// Additional assertions to verify getPet behavior for both existing and
+			// non-existing pets
+			.andDo(mvcResult -> {
+				Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+				// Verify that a pet named 'Max' exists with expected properties
+				Pet existingPet = owner.getPet("Max");
+				assertNotNull(existingPet, "Expected pet 'Max' to be returned");
+				assertEquals("Max", existingPet.getName(), "Expected the pet name to be 'Max'");
+				// Verify that searching for a non-existing pet returns null
+				Pet nonExistingPet = owner.getPet("Buddy");
+				assertNull(nonExistingPet, "Expected null for a non-existing pet 'Buddy'");
+			});
 	}
 
 	@Test
