@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +48,16 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,8 +103,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Added a visit to the pet "Max"
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -217,6 +221,15 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Additional assertions to validate the behavior of getPet method for negative
+		// scenarios
+		Owner owner = george();
+		// Assert that getPet returns null for a pet name that does not exist (testing the
+		// negative branch)
+		assertNull(owner.getPet("UnknownPet"), "Expected getPet to return null for a pet not owned");
+		// Assert that getPet is case sensitive: searching with wrong case returns null
+		assertNull(owner.getPet("max"), "Expected getPet to return null when case does not match");
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
