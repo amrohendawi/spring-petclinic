@@ -48,6 +48,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
 
+// Added import for Owner to verify its toString behavior
+import org.springframework.samples.petclinic.owner.Owner;
+// Existing import for NamedEntity remains
+import org.springframework.samples.petclinic.model.NamedEntity;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = { "spring.docker.compose.skip.in-tests=false", //
 		"spring.docker.compose.start.arguments=--force-recreate,--renew-anon-volumes,postgres" })
 @ActiveProfiles("postgres")
@@ -73,7 +78,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +94,30 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+		// Existing test for NamedEntity remains
+		NamedEntity namedEntity = new NamedEntity();
+		// Assuming NamedEntity has a setter for a key property such as 'name'
+		namedEntity.setName("Fido");
+		String namedToStringResult = namedEntity.toString();
+		assertThat(namedToStringResult).isNotEmpty().contains("Fido");
+
+		// New assertions to verify Owner.toString() contains expected details
+		Owner owner = new Owner();
+		// Set relevant properties for the Owner
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+
+		String ownerToString = owner.toString();
+		assertThat(ownerToString).isNotEmpty()
+			.contains("John")
+			.contains("Doe")
+			.contains("123 Main St")
+			.contains("Springfield")
+			.contains("1234567890");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
