@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to add additional assertions for getPet negative scenarios to kill the
+ * mutation. It verifies that getPet returns null when a pet with a non-matching name is
+ * requested and ensures correct behavior when multiple pets exist.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -228,6 +233,23 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to test the negative condition for getPet method
+		// Verify that getPet returns null for a non-existent pet and correctly returns
+		// the pet for exact name matches.
+		Owner owner = george();
+		// Add an additional pet to test multiple pet scenario
+		Pet buddy = new Pet();
+		buddy.setName("Buddy");
+		buddy.setBirthDate(LocalDate.now());
+		PetType cat = new PetType();
+		cat.setName("cat");
+		buddy.setType(cat);
+		owner.addPet(buddy);
+
+		assertNotNull(owner.getPet("Max"));
+		assertNotNull(owner.getPet("Buddy"));
+		assertNull(owner.getPet("NonExistentPet"));
 	}
 
 	@Test
