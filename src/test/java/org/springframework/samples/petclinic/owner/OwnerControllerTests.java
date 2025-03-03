@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * This class has been modified to add explicit assertions on the getPet method of the
+ * Owner class in order to catch issues related to a negated conditional mutation
+ * introduced by the PiTest mutation testing framework.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -101,6 +107,9 @@ class OwnerControllerTests {
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
 
+		// Added assertions to ensure that getPet returns the correct pet
+		assertThat(george.getPet("Max")).isNotNull();
+		assertThat(george.getPet("Max").getName()).isEqualTo("Max");
 	}
 
 	@Test
