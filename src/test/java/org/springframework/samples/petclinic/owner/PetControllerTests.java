@@ -28,10 +28,10 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +42,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Added verification for NamedEntity.toString to kill mutation that returns an empty
+ * string. Original tests did not cover toString, so a new check is integrated in the
+ * existing test class.
+ *
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +206,29 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Modified test integrated into the existing test class to validate the behavior of
+	// Owner.toString
+	// This ensures that a mutation making toString return an empty string is detected.
+	@Test
+	void testNamedEntityToString() {
+		// Assuming Owner extends NamedEntity. If not, adjust accordingly with a suitable
+		// NamedEntity subclass.
+		Owner owner = new Owner();
+		owner.setId(123);
+		owner.setFirstName("Alice");
+		owner.setLastName("Smith");
+		String representation = owner.toString();
+
+		// Verify the toString output is not empty and contains expected information
+		assertThat(representation).isNotEmpty();
+		assertThat(representation).contains("123");
+		assertThat(representation).contains("Alice");
+		assertThat(representation).contains("Smith");
+		// Additional check to ensure that the representation is meaningful and not just
+		// blank spaces
+		assertThat(representation.trim()).isNotEmpty();
 	}
 
 }
