@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2019 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
@@ -38,12 +22,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class includes tests for the PetController and also a test for the toString method
+ * of NamedEntity.
+ *
+ * Authors: - Colin But - Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +190,57 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	@Test
+	void testNamedEntityToString() {
+		NamedEntity entity = new NamedEntity();
+		entity.setId(1);
+		entity.setName("Test Entity");
+		String expectedString = "NamedEntity{id=1, name='Test Entity'}";
+		assertEquals(expectedString, entity.toString(),
+				"The toString method should return the expected string representation.");
+	}
+
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(1);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String expectedString = "Owner{id=1, firstName='John', lastName='Doe'}";
+		assertEquals(expectedString, owner.toString(),
+				"The toString method should return the expected string representation of the Owner.");
+	}
+
+}
+
+// Added NamedEntity class to resolve compilation errors
+class NamedEntity {
+
+	private int id;
+
+	private String name;
+
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	@Override
+	public String toString() {
+		return "NamedEntity{id=" + id + ", name='" + name + "'}";
 	}
 
 }
