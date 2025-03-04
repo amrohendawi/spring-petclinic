@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +55,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Additional tests added to verify the behavior of Owner#getPet for both existing and
+ * non-existing pets. This ensures that both branches of the conditional logic in getPet
+ * are properly covered and any mutation in the conditional is detected.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -91,6 +97,7 @@ class OwnerControllerTests {
 	void setup() {
 
 		Owner george = george();
+		// Set up repository responses
 		given(this.owners.findByLastNameStartingWith(eq("Franklin"), any(Pageable.class)))
 			.willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
@@ -99,8 +106,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Adding a visit to the pet retrieved by name
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -248,6 +255,24 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// New tests to cover the getPet method scenarios introduced by the mutation
+	@Test
+	void testGetPetNotFound() {
+		Owner owner = george();
+		// Verify that getPet returns null when a pet with the given name does not exist
+		assertNull(owner.getPet("Buddy"), "Expected null when pet with name 'Buddy' is not found");
+	}
+
+	@Test
+	void testGetPetExisting() {
+		Owner owner = george();
+		// Verify that getPet returns the correct pet when it exists
+		Pet pet = owner.getPet("Max");
+		assertNotNull(pet, "Expected pet to be returned when pet with name 'Max' exists");
+		assertEquals("Max", pet.getName(), "Pet name should be 'Max'");
+		// Additional state verification can be added as needed
 	}
 
 }
