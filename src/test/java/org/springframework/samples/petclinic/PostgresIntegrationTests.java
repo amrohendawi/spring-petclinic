@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Arrays;
@@ -44,6 +45,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.samples.petclinic.model.NamedEntity;
+import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
@@ -89,6 +92,24 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void testNamedEntityToString() {
+		NamedEntity namedEntity = new NamedEntity();
+		namedEntity.setName("ExpectedName");
+		assertEquals("NamedEntity{name='ExpectedName'}", namedEntity.toString(),
+				"The toString method did not return the expected string representation.");
+	}
+
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String expectedToString = "Owner{firstName='John', lastName='Doe'}";
+		assertEquals(expectedToString, owner.toString(),
+				"The toString method did not return the expected string representation for Owner.");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
