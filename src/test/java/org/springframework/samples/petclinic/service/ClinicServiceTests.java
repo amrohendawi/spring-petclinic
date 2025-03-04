@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -50,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +99,19 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// Additional test for getPet by ID when no matching pet exists
+		assertThat(owner.getPet(999)).isNull();
+		// Additional negative test: ensure getPet(String) returns null for non-existent
+		// pet name
+		assertThat(owner.getPet("nonexistent")).isNull();
+
+		// Additional validation to specifically test the getPet(id) method boundary
+		// conditions
+		Pet pet = owner.getPets().get(0);
+		// Ensure that getPet returns the correct pet for a valid id
+		assertThat(owner.getPet(pet.getId())).isEqualTo(pet);
+		// Ensure that getPet returns null when queried with an id that doesn't exist
+		assertThat(owner.getPet(pet.getId() + 1000)).isNull();
 	}
 
 	@Test
@@ -174,6 +188,27 @@ class ClinicServiceTests {
 		// checks that id has been generated
 		pet = owner6.getPet("bowser");
 		assertThat(pet.getId()).isNotNull();
+
+		// Additional tests for getPet to cover both branches of the conditional logic
+		// Test case insensitivity: retrieving a pet using a different case should return
+		// the persisted pet
+		Owner ownerAfterSave = this.owners.findById(6).get();
+		Pet petByDifferentCase = ownerAfterSave.getPet("BOWSER");
+		assertThat(petByDifferentCase).isNotNull();
+		assertThat(petByDifferentCase.getId()).isEqualTo(pet.getId());
+
+		// Test that an unsaved (transient) pet should not be returned by getPet
+		Pet transientPet = new Pet();
+		transientPet.setName("fluffy");
+		transientPet.setBirthDate(LocalDate.now());
+		transientPet.setType(EntityUtils.getById(types, PetType.class, 2));
+		ownerAfterSave.addPet(transientPet);
+		// Not saving ownerAfterSave, so transientPet remains unsaved (id is null)
+		assertThat(ownerAfterSave.getPet("fluffy")).isNull();
+
+		// Additional test for getPet by ID when no pet matches, covering the negated
+		// branch
+		assertThat(ownerAfterSave.getPet(0)).isNull();
 	}
 
 	@Test
@@ -195,6 +230,12 @@ class ClinicServiceTests {
 		owner6 = optionalOwner.get();
 		pet7 = owner6.getPet(7);
 		assertThat(pet7.getName()).isEqualTo(newName);
+
+		// Additional test: ensure getPet returns null for non-existing pet IDs
+		assertThat(owner6.getPet(999)).isNull();
+		// Additional negative test: ensure getPet(String) returns null for a non-existent
+		// pet name
+		assertThat(owner6.getPet("nonexistentPet")).isNull();
 	}
 
 	@Test
@@ -226,6 +267,14 @@ class ClinicServiceTests {
 		assertThat(pet7.getVisits()) //
 			.hasSize(found + 1) //
 			.allMatch(value -> value.getId() != null);
+
+		// Additional tests for null validation on addVisit method to address survived
+		// mutation
+		Visit visitForNullPetId = new Visit();
+		visitForNullPetId.setDescription("test null pet id");
+		assertThatThrownBy(() -> owner6.addVisit(null, visitForNullPetId)).isInstanceOf(IllegalArgumentException.class);
+
+		assertThatThrownBy(() -> owner6.addVisit(pet7.getId(), null)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
