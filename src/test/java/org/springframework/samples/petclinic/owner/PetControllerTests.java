@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +44,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class was modified to include an additional test verifying the output of
+ * NamedEntity.toString so as to catch mutations that cause it to return an empty string.
+ * The test creates an instance of Owner (a subclass of NamedEntity) with sample field
+ * values and asserts that the string representation is not blank and contains expected
+ * values.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +210,25 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to check the output of NamedEntity.toString to catch mutations that
+	// return an empty string.
+	@Test
+	void testNamedEntityToString() {
+		// Using Owner as a concrete subclass of NamedEntity
+		Owner owner = new Owner();
+		owner.setId(1);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String representation = owner.toString();
+		assertThat(representation).as("NamedEntity.toString() should not be blank").isNotBlank();
+		// Check that the string representation contains key details to ensure meaningful
+		// output
+		assertThat(representation).contains("John").contains("Doe").contains("1");
+		// Additional assertion to further tighten the contract in case of mutation that
+		// might return an empty or malformed string
+		assertThat(representation).matches(".*1.*John.*Doe.*");
 	}
 
 }
