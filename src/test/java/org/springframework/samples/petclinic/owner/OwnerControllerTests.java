@@ -20,6 +20,7 @@ import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.Page;
@@ -51,6 +52,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Additional assertions have been added to verify the behavior of Owner.getPet() for edge
+ * cases, ensuring that the method returns null when no valid pet is found, and that a new
+ * pet is not erroneously returned even if its name matches.
+ *
+ * These changes ensure that mutations affecting the conditional logic in getPet are
+ * caught.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -228,6 +236,21 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to cover edge cases for getPet()
+		Owner owner = george();
+		// Case 1: When no pet with the given name exists, getPet should return null
+		Assertions.assertNull(owner.getPet("NonExistent"),
+				"getPet should return null when no pet matches the given name");
+
+		// Case 2: When a pet is marked as new (i.e., without an id), it should not be
+		// returned even if the name matches
+		Pet newPet = new Pet();
+		newPet.setName("Buddy");
+		// Not setting the id marks it as new
+		owner.addPet(newPet);
+		Assertions.assertNull(owner.getPet("Buddy"),
+				"getPet should not return a pet that is new even if the name matches");
 	}
 
 	@Test
