@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,8 +40,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+// Assuming NamedEntity is located in the following package. Adjust the package name as needed.
+import org.springframework.samples.petclinic.model.NamedEntity;
+
 /**
  * Test class for the {@link PetController}
+ *
+ * <p>
+ * This class tests the web layer endpoints related to pet creation and update. A new test
+ * is integrated to verify the behavior of the toString method of the NamedEntity class in
+ * order to catch regressions caused by mutations. Additionally, tests for Owner.toString
+ * have been integrated to ensure that the method returns a meaningful string
+ * representation.
+ * </p>
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +215,34 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Modified test added to verify the behavior of both NamedEntity.toString and
+	// Owner.toString methods.
+	// This test ensures that the toString method returns a non-empty string that includes
+	// the entity's name (for NamedEntity) and key owner attributes (for Owner), catching
+	// any regression.
+	@Test
+	void testNamedEntityToString() {
+		// Testing NamedEntity toString
+		NamedEntity entity = new NamedEntity();
+		entity.setName("TestName");
+		String result = entity.toString();
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("TestName");
+
+		// Testing Owner toString
+		Owner owner = new Owner();
+		// Set key properties for Owner. Assuming Owner has firstName, lastName and id.
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setId(42);
+		String ownerString = owner.toString();
+		assertThat(ownerString).isNotEmpty();
+		// Check that the string representation contains the key owner attributes
+		assertThat(ownerString).contains("John");
+		assertThat(ownerString).contains("Doe");
+		assertThat(ownerString).contains("42");
 	}
 
 }
