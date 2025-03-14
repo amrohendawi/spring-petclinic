@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,10 +50,19 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Added additional assertions to verify the correct behavior of the getPet method on the
+ * Owner entity. These tests ensure that, in cases with multiple pets or when a pet does
+ * not exist, the method behaves as expected; thus killing mutations that might have
+ * inverted conditionals.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -100,7 +112,6 @@ class OwnerControllerTests {
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -248,6 +259,56 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Additional tests to cover edge cases for the getPet method to kill surviving
+	// mutations
+
+	@Test
+	void testGetPetNotFound() {
+		Owner owner = george();
+		// Assert that when a pet name that does not exist is requested, the method
+		// returns null
+		assertNull(owner.getPet("Bella"), "Expected getPet to return null for non-existent pet name");
+	}
+
+	@Test
+	void testGetPetMultiplePets() {
+		// Create an owner with two pets: 'Max' and 'Bella'
+		Owner owner = new Owner();
+		owner.setId(10);
+		owner.setFirstName("Alice");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Park Ave");
+		owner.setCity("Springfield");
+		owner.setTelephone("5551234567");
+
+		Pet petMax = new Pet();
+		petMax.setId(1);
+		petMax.setName("Max");
+		petMax.setBirthDate(LocalDate.now());
+		PetType dog = new PetType();
+		dog.setName("dog");
+		petMax.setType(dog);
+
+		Pet petBella = new Pet();
+		petBella.setId(2);
+		petBella.setName("Bella");
+		petBella.setBirthDate(LocalDate.now());
+		PetType cat = new PetType();
+		cat.setName("cat");
+		petBella.setType(cat);
+
+		owner.addPet(petMax);
+		owner.addPet(petBella);
+
+		// Check that getPet returns the correct pet when searched by name
+		Pet foundPet = owner.getPet("Bella");
+		assertNotNull(foundPet, "Expected to find pet named Bella");
+		assertEquals("Bella", foundPet.getName(), "Expected the pet name to be Bella");
+
+		// Also verify that searching for a pet that doesn't exist returns null
+		assertNull(owner.getPet("Charlie"), "Expected getPet to return null for a non-existent pet name");
 	}
 
 }
