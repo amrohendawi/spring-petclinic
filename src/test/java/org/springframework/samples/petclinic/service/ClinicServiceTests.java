@@ -7,19 +7,19 @@
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * See the License for the specific language governing permissions and limitations under the License.
  */
 
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -34,6 +34,7 @@ import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.samples.petclinic.owner.Pet;
 import org.springframework.samples.petclinic.owner.PetType;
 import org.springframework.samples.petclinic.owner.Visit;
+import org.springframework.samples.petclinic.vet.Specialty;
 import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +99,26 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+
+		// Additional negative test: Verify that getPet returns null for a non-existent
+		// pet name.
+		assertThat(owner.getPet("NonExistingPet")).isNull();
+
+		// Additional negative test: Verify that getPet returns null for an empty string
+		// name.
+		assertThat(owner.getPet("")).isNull();
+
+		// Additional tests for numeric getPet
+		Pet existingPet = owner.getPets().get(0);
+		// Verify that getPet by id returns the correct pet
+		assertThat(owner.getPet(existingPet.getId())).isNotNull();
+		assertThat(owner.getPet(existingPet.getId()).getName()).isEqualTo(existingPet.getName());
+		// Verify that getPet with an invalid id returns null
+		assertThat(owner.getPet(existingPet.getId() + 100)).isNull();
+
+		// New additional negative test: Verify that getPet returns null when called with
+		// a pet id that does not exist
+		assertThat(owner.getPet(1000)).isNull();
 	}
 
 	@Test
@@ -174,6 +195,14 @@ class ClinicServiceTests {
 		// checks that id has been generated
 		pet = owner6.getPet("bowser");
 		assertThat(pet.getId()).isNotNull();
+
+		// Additional negative test: Verify that getPet returns null when searching for a
+		// pet name that does not exist
+		assertThat(owner6.getPet("notbowser")).isNull();
+		// Additional negative test for numeric getPet: using an invalid pet id
+		assertThat(owner6.getPet(pet.getId() + 1000)).isNull();
+		// Additional negative test: using a negative pet id should return null
+		assertThat(owner6.getPet(-1)).isNull();
 	}
 
 	@Test
@@ -183,6 +212,7 @@ class ClinicServiceTests {
 		assertThat(optionalOwner).isPresent();
 		Owner owner6 = optionalOwner.get();
 
+		// Retrieve pet using id-based lookup
 		Pet pet7 = owner6.getPet(7);
 		String oldName = pet7.getName();
 
@@ -195,6 +225,16 @@ class ClinicServiceTests {
 		owner6 = optionalOwner.get();
 		pet7 = owner6.getPet(7);
 		assertThat(pet7.getName()).isEqualTo(newName);
+
+		// Additional negative test: When searching by name, getPet should only return a
+		// pet with exact matching name
+		assertThat(owner6.getPet(newName + "Extra")).isNull();
+
+		// Additional negative test: getPet(int) should return null when the pet id does
+		// not exist
+		assertThat(owner6.getPet(9999)).isNull();
+		// Additional negative test: getPet(int) with a negative id should return null
+		assertThat(owner6.getPet(-5)).isNull();
 	}
 
 	@Test
@@ -206,6 +246,27 @@ class ClinicServiceTests {
 		assertThat(vet.getNrOfSpecialties()).isEqualTo(2);
 		assertThat(vet.getSpecialties().get(0).getName()).isEqualTo("dentistry");
 		assertThat(vet.getSpecialties().get(1).getName()).isEqualTo("surgery");
+
+		// Additional test to verify that specialties are sorted even if added in unsorted
+		// order.
+		Vet unsortedVet = new Vet();
+		unsortedVet.setFirstName("Unsorted");
+		unsortedVet.setLastName("Vet");
+
+		Specialty specialtySurgery = new Specialty();
+		specialtySurgery.setName("surgery");
+		Specialty specialtyDentistry = new Specialty();
+		specialtyDentistry.setName("dentistry");
+
+		// Add specialties in reverse order intentionally
+		unsortedVet.addSpecialty(specialtySurgery);
+		unsortedVet.addSpecialty(specialtyDentistry);
+
+		List<Specialty> sortedSpecialties = unsortedVet.getSpecialties();
+		assertThat(sortedSpecialties).hasSize(2);
+		// Expected sorted order: dentistry comes before surgery
+		assertThat(sortedSpecialties.get(0).getName()).isEqualTo("dentistry");
+		assertThat(sortedSpecialties.get(1).getName()).isEqualTo("surgery");
 	}
 
 	@Test
@@ -216,6 +277,12 @@ class ClinicServiceTests {
 		Owner owner6 = optionalOwner.get();
 
 		Pet pet7 = owner6.getPet(7);
+
+		// Negative test: passing a null visit should throw an IllegalArgumentException
+		assertThrows(IllegalArgumentException.class, () -> {
+			owner6.addVisit(pet7.getId(), null);
+		}, "Expected addVisit to throw IllegalArgumentException when visit is null");
+
 		int found = pet7.getVisits().size();
 		Visit visit = new Visit();
 		visit.setDescription("test");
