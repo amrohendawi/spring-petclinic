@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to cover negative cases for Owner.getPet method to address survived mutations.
+ * Additional assertions verify that when a pet name that does not exist is requested,
+ * null is returned.
+ *
+ * Authors: Colin But, Wick Dynex, and modifications for mutation testing.
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -227,7 +232,16 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				// Retrieve the owner from the model and verify getPet behavior for
+				// positive and negative cases
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// When a valid pet name is provided, it should return the matching pet
+				assertEquals("Max", owner.getPet("Max").getName(), "Expected pet name to be 'Max'");
+				// When a non-existent pet name is provided, it should return null
+				assertNull(owner.getPet("NonExisting"), "Expected null when pet name does not match");
+			});
 	}
 
 	@Test
