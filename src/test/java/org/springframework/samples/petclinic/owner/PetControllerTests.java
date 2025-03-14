@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +42,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added a dedicated test method for Owner.toString() to kill mutations affecting its
+ * behavior.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +207,27 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to verify the behavior of Owner.toString()
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		// Set known properties so that toString returns a meaningful string
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main Street");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+
+		String ownerString = owner.toString();
+
+		// Assert that the toString method contains the initialized properties
+		assertThat(ownerString).contains("John");
+		assertThat(ownerString).contains("Doe");
+		assertThat(ownerString).contains("123 Main Street");
+		assertThat(ownerString).contains("Springfield");
+		assertThat(ownerString).contains("1234567890");
 	}
 
 }
