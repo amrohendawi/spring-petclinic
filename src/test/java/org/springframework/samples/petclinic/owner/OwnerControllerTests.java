@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to additionally validate the {@code getPet} method in {@code Owner} for both
+ * matching and non-matching pet names, ensuring that conditional logic around pet name
+ * matching behaves as expected even when mutations occur.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,6 +104,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Ensure that getPet is called with an existing pet name
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -228,6 +234,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Added additional assertions to cover both branches of Owner.getPet
+		Owner owner = george();
+		// Verify that getPet returns the pet when the name matches
+		assertNotNull(owner.getPet("Max"));
+		// Verify that getPet returns null when no pet with the given name exists
+		assertNull(owner.getPet("NonExisting"));
 	}
 
 	@Test
