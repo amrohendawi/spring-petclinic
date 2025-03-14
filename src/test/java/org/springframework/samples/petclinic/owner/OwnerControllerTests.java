@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
@@ -40,6 +41,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +56,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class has been modified to add additional assertions on the getPet method to cover
+ * edge cases for survived mutations. Specifically, it now tests scenarios where the pet
+ * name does not exist and a multi-pet scenario.
+ *
+ * Added assertions using getPet to ensure that the method returns null when a pet is not
+ * found and returns the correct pet when there is a match. These modifications ensure
+ * that subtle mutations in the getPet method's conditional logic are caught by the tests.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -217,7 +228,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
+		MvcResult mvcResult = mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
 			.andExpect(model().attribute("owner", hasProperty("firstName", is("George"))))
@@ -227,7 +238,36 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andReturn();
+
+		// Additional tests for the getPet method to address the survived mutation
+		Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+
+		// Test that getPet returns null when pet name does not exist
+		assertNull(owner.getPet("NonExistent"), "Expected getPet to return null for a non-existent pet name");
+
+		// Test that getPet returns the correct pet when there is a single pet
+		Pet petMax = owner.getPet("Max");
+		assertNotNull(petMax, "Expected getPet to return the 'Max' pet");
+		assertEquals("Max", petMax.getName(), "Pet name should be 'Max'");
+
+		// Add another pet to test multiple pet scenario
+		Pet bella = new Pet();
+		bella.setId(2);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now());
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		owner.addPet(bella);
+
+		// Verify that getPet returns the correct pet in multiple pet scenario
+		assertNotNull(owner.getPet("Bella"), "Expected getPet to return the 'Bella' pet");
+		assertEquals("Bella", owner.getPet("Bella").getName(), "Pet name should be 'Bella'");
+
+		// Ensure that a partial or unmatched name does not return an incorrect pet
+		assertNull(owner.getPet("B"), "Expected getPet to return null when pet name does not exactly match");
 	}
 
 	@Test
