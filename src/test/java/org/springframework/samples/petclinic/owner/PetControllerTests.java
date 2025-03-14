@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +43,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added a dedicated test for Owner.toString method to ensure the output is meaningful.
+ *
+ * This modification addresses the survived mutation for Owner.toString.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +209,29 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test for Owner.toString to kill the survived mutation
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
+		// Set additional fields as applicable
+		owner.setFirstName("George");
+		owner.setLastName("Franklin");
+		owner.setAddress("110 W. Liberty St.");
+		owner.setCity("Madison");
+		owner.setTelephone("6085551023");
+
+		String ownerString = owner.toString();
+		// Assert that the output is not empty and contains key substrings from the owner
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("George");
+		assertThat(ownerString).contains("Franklin");
+		assertThat(ownerString).contains("110 W. Liberty St.");
+		assertThat(ownerString).contains("Madison");
+		assertThat(ownerString).contains("6085551023");
+		assertThat(ownerString).contains(String.valueOf(TEST_OWNER_ID));
 	}
 
 }
