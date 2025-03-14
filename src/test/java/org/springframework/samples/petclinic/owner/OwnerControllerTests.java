@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +55,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Additional assertions added to validate the exact behavior of getPet in Owner class.
+ * This helps ensure that the correct pet is returned when multiple pets exist and that a
+ * non-existent pet request yields null. This modification kills the mutation in getPet
+ * that might erroneously change the conditional logic.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -76,14 +83,27 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// First pet "Max"
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
 		max.setType(dog);
 		max.setName("Max");
 		max.setBirthDate(LocalDate.now());
-		george.addPet(max);
 		max.setId(1);
+		george.addPet(max);
+
+		// Second pet "Kitty" to test getPet method behavior with multiple pets
+		Pet kitty = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		kitty.setType(cat);
+		kitty.setName("Kitty");
+		kitty.setBirthDate(LocalDate.now().minusDays(1));
+		kitty.setId(2);
+		george.addPet(kitty);
+
 		return george;
 	}
 
@@ -99,8 +119,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Adding a visit to pet "Max"
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,6 +247,17 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			// Additional assertions to validate the exact behavior of getPet
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the correct pet based on name
+				assertNotNull(owner.getPet("Max"), "Expected pet 'Max' is not null");
+				assertEquals("Max", owner.getPet("Max").getName(), "getPet returned wrong pet for name 'Max'");
+				assertNotNull(owner.getPet("Kitty"), "Expected pet 'Kitty' is not null");
+				assertEquals("Kitty", owner.getPet("Kitty").getName(), "getPet returned wrong pet for name 'Kitty'");
+				// Verify that requesting a non-existent pet returns null
+				assertNull(owner.getPet("Nonexistent"), "Expected null when no pet matches the name");
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
