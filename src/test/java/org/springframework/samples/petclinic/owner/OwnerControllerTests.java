@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -52,8 +54,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Incorporates additional assertions to cover edge cases in Owner.getPet, in order to
+ * catch mutations that may incorrectly invert conditional logic (e.g., filtering out new
+ * pets).
+ *
+ * The tests now verify that when multiple pets with the same name exist, the non-new pet
+ * is returned and that a lookup for a non-existing pet returns null.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -76,14 +84,25 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// Create an existing pet (not new), with id
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
 		max.setType(dog);
 		max.setName("Max");
 		max.setBirthDate(LocalDate.now());
-		george.addPet(max);
 		max.setId(1);
+		george.addPet(max);
+
+		// Create a new pet with the same name which should be ignored by getPet
+		Pet newMax = new Pet();
+		newMax.setType(dog);
+		newMax.setName("Max");
+		newMax.setBirthDate(LocalDate.now());
+		// Note: not setting id marks the pet as 'new'
+		george.addPet(newMax);
+
 		return george;
 	}
 
@@ -97,10 +116,12 @@ class OwnerControllerTests {
 		given(this.owners.findAll(any(Pageable.class))).willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
+
+		// Add a visit to the non-new pet returned by getPet
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This should return the pet with id (existing), not the new pet
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,7 +248,18 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			// Additional assertions for getPet edge cases to kill mutated conditionals
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// getPet("Max") should return the existing pet (id == 1) and not the new
+				// pet
+				Pet pet = owner.getPet("Max");
+				assertThat(pet).isNotNull();
+				assertThat(pet.getId()).isEqualTo(1);
+				// getPet("NonExisting") should return null
+				assertThat(owner.getPet("NonExisting")).isNull();
+			});
 	}
 
 	@Test
