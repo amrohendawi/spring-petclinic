@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,8 +54,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Added additional assertions and modified the owner setup to test both branches of the
+ * getPet method. This ensures that the behavior when a pet with a matching name is not
+ * found is also verified.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -68,6 +73,7 @@ class OwnerControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	// Modified to add an extra pet to test the alternative branch of the getPet method
 	private Owner george() {
 		Owner george = new Owner();
 		george.setId(TEST_OWNER_ID);
@@ -76,14 +82,27 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// First pet: Max
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
 		max.setType(dog);
 		max.setName("Max");
 		max.setBirthDate(LocalDate.now());
-		george.addPet(max);
 		max.setId(1);
+		george.addPet(max);
+
+		// Second pet: Bella - added to verify correct behavior when multiple pets exist
+		Pet bella = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now());
+		bella.setId(2);
+		george.addPet(bella);
+
 		return george;
 	}
 
@@ -99,8 +118,9 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Use getPet to retrieve 'Max' and add a visit, ensuring that the positive branch
+		// is called
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -217,6 +237,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Perform the MVC call as before
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
@@ -228,6 +249,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to cover both branches of the getPet method
+		Owner testOwner = george();
+		// Positive case: pet exists
+		assertThat(testOwner.getPet("Max")).isNotNull();
+		assertThat(testOwner.getPet("Bella")).isNotNull();
+		// Negative case: pet does not exist
+		assertThat(testOwner.getPet("Nonexistent")).isNull();
 	}
 
 	@Test
