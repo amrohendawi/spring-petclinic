@@ -47,13 +47,21 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to add explicit tests for the getPet method to cover both branches of
+ * conditional logic in order to kill the surviving mutation in the Owner.getPet method.
+ *
+ * Original authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -248,6 +256,39 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added test to directly verify the behavior of getPet in Owner
+	@Test
+	void testGetPet() {
+		// Create an owner with multiple pets
+		Owner owner = new Owner();
+		owner.setId(100);
+		owner.setFirstName("Test");
+		owner.setLastName("Owner");
+
+		Pet pet1 = new Pet();
+		pet1.setId(101);
+		pet1.setName("Max");
+		PetType dog = new PetType();
+		dog.setName("dog");
+		pet1.setType(dog);
+		pet1.setBirthDate(LocalDate.now());
+		owner.addPet(pet1);
+
+		Pet pet2 = new Pet();
+		pet2.setId(102);
+		pet2.setName("Buddy");
+		PetType cat = new PetType();
+		cat.setName("cat");
+		pet2.setType(cat);
+		pet2.setBirthDate(LocalDate.now());
+		owner.addPet(pet2);
+
+		// Verify that getPet returns the correct pet when a matching name is provided
+		assertSame(pet1, owner.getPet("Max"));
+		// Verify that getPet returns null when no matching pet is found
+		assertNull(owner.getPet("Charlie"));
 	}
 
 }
