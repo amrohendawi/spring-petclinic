@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +43,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class has been modified to include an assertion for the Owner.toString() method to
+ * ensure that its output contains expected values and is not empty. This addition helps
+ * to kill the mutation that erroneously returns an empty string.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -69,6 +73,8 @@ class PetControllerTests {
 		given(this.owners.findPetTypes()).willReturn(Lists.newArrayList(cat));
 
 		Owner owner = new Owner();
+		// Set the owner id to use in toString assertion
+		owner.setId(TEST_OWNER_ID);
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
@@ -78,6 +84,12 @@ class PetControllerTests {
 		pet.setName("petty");
 		dog.setName("doggy");
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		// Added assertion to verify that Owner.toString() returns a non-empty
+		// representation
+		// and includes the owner id. This ensures that mutations affecting toString() are
+		// detected.
+		assertThat(owner.toString()).isNotBlank().contains(String.valueOf(TEST_OWNER_ID));
 	}
 
 	@Test
