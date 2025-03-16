@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -40,6 +41,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +53,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Added extra tests for the Owner.getPet method to cover negative scenarios and boundary
+ * conditions. These tests will expose any deviation due to mutation in getPet logic.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +104,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Accessing pet 'Max' to add a visit
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -248,6 +254,57 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added tests to cover the Owner.getPet method behavior for negative and boundary
+	// scenarios
+
+	@Test
+	void testGetPetNotFound() {
+		Owner owner = george();
+		// Request a pet name that does not exist; expecting null
+		assertNull(owner.getPet("Nonexistent"));
+	}
+
+	@Test
+	void testGetPetWithMultiplePets() {
+		Owner owner = new Owner();
+		owner.setId(100);
+		owner.setFirstName("Test");
+		owner.setLastName("Owner");
+
+		Pet pet1 = new Pet();
+		pet1.setId(10);
+		pet1.setName("Buddy");
+		PetType dog = new PetType();
+		dog.setName("dog");
+		pet1.setType(dog);
+		pet1.setBirthDate(LocalDate.now());
+		owner.addPet(pet1);
+
+		Pet pet2 = new Pet();
+		pet2.setId(11);
+		pet2.setName("Lucy");
+		PetType cat = new PetType();
+		cat.setName("cat");
+		pet2.setType(cat);
+		pet2.setBirthDate(LocalDate.now());
+		owner.addPet(pet2);
+
+		// Test retrieval by exact name
+		Pet result1 = owner.getPet("Buddy");
+		assertThat(result1.getName(), is("Buddy"));
+
+		Pet result2 = owner.getPet("Lucy");
+		assertThat(result2.getName(), is("Lucy"));
+	}
+
+	@Test
+	void testGetPetCaseSensitivity() {
+		Owner owner = george();
+		// Since the pet name is "Max", looking for "max" (lowercase) should return null
+		// if the check is case sensitive
+		assertNull(owner.getPet("max"));
 	}
 
 }
