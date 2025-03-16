@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +55,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified tests to better exercise the getPet method conditional logic to address
+ * survived mutations in the Owner.getPet method.
+ *
+ * Additional verifications in testShowOwner cover cases where: (a) a pet is correctly
+ * retrieved when present, (b) duplicate pets with the same name where one is new are
+ * handled correctly, (c) non-existing pet returns null.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -228,6 +237,32 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to cover edge cases in the getPet method
+		Owner owner = george();
+
+		// Scenario (a): Ensure that getPet returns the pet when it exists
+		Pet pet = owner.getPet("Max");
+		assertNotNull(pet, "Expected to find a pet named Max");
+		assertEquals(1, pet.getId(), "Expected the persisted pet (id=1) to be returned");
+
+		// Scenario (b): Add a new pet with the same name "Max" which is not persisted
+		Pet newMax = new Pet();
+		newMax.setName("Max");
+		newMax.setBirthDate(LocalDate.now());
+		PetType dog = new PetType();
+		dog.setName("dog");
+		newMax.setType(dog);
+		// Note: newMax is not assigned an id, so it's considered "new"
+		owner.addPet(newMax);
+
+		// The getPet method should still return the persisted pet and not the new one
+		Pet retrievedPet = owner.getPet("Max");
+		assertNotNull(retrievedPet, "Expected to find a pet named Max even after adding a new one");
+		assertEquals(1, retrievedPet.getId(), "Expected the persisted pet to be returned, not the new one");
+
+		// Scenario (c): Query for a pet that does not exist
+		assertNull(owner.getPet("NonExisting"), "Expected null when no pet with the given name exists");
 	}
 
 	@Test
