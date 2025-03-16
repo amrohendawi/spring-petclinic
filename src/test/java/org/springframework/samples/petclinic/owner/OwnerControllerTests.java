@@ -29,7 +29,6 @@ import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -40,6 +39,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +52,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * This test class has been modified to cover both branches of the conditional in
+ * Owner.getPet method. Additional assertions have been integrated into testShowOwner to
+ * assert the behavior when a pet exists and when it does not exist. This helps in
+ * detecting any inversion of the conditional logic (e.g., due to
+ * NegateConditionalsMutator).
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +106,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Add a visit to the pet 'Max' to simulate realistic owner state
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -217,6 +225,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Perform MVC call as before
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
@@ -228,6 +237,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to test both branches of the getPet method conditional
+		// Verify that getPet returns the pet when it exists
+		Owner owner = george();
+		assertNotNull(owner.getPet("Max"), "Expected to retrieve pet 'Max'");
+		// Verify that getPet returns null when the pet does not exist
+		assertNull(owner.getPet("NonExistent"), "Expected to retrieve null for non-existent pet");
 	}
 
 	@Test
