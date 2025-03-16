@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Added additional assertions to verify the conditional logic in Owner#getPet. This
+ * ensures that getPet returns the pet only when the name exactly matches (case
+ * sensitive), and returns null otherwise, thereby killing the mutation that negates the
+ * condition.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +106,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Adding visit to the pet returned by getPet("Max") to exercise its logic
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -228,6 +236,21 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+	}
+
+	// Added test to explicitly verify the behavior of Owner#getPet
+	@Test
+	void testGetPetBehavior() {
+		Owner owner = george();
+		// Positive case: exact match should return the pet
+		Pet pet = owner.getPet("Max");
+		assertThat(pet).isNotNull();
+		assertThat(pet.getName()).isEqualTo("Max");
+
+		// Negative case: using a non-matching name (case-sensitive check) should return
+		// null
+		Pet nonMatchingPet = owner.getPet("max");
+		assertThat(nonMatchingPet).isNull();
 	}
 
 	@Test
