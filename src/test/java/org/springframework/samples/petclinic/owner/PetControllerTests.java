@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +42,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Modified to include verification of the Owner.toString method in order to catch
+ * survived mutations.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +207,26 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// New test added to verify the behavior of Owner.toString method, ensuring it returns
+	// a valid formatted string.
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		// Set known properties for the owner
+		owner.setId(99);
+		owner.setFirstName("TestFirstName");
+		owner.setLastName("TestLastName");
+		// Additional properties can be set here if necessary
+
+		String ownerString = owner.toString();
+
+		// Assert that the toString result is not empty and contains known property values
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("TestFirstName");
+		assertThat(ownerString).contains("TestLastName");
+		assertThat(ownerString).contains("99");
 	}
 
 }
