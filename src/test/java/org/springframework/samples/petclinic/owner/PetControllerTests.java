@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +42,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added a dedicated test for {@link Owner#toString()} to ensure a meaningful string
+ * representation is provided. This test checks that the returned string is not empty and
+ * includes specific known properties, which will fail if the method returns an empty
+ * string as a result of mutation.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +209,31 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test for Owner.toString to ensure a meaningful string representation.
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		// Setting up owner fields with known values. Adjust field setters as per actual
+		// Owner implementation.
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main Street");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+
+		String ownerString = owner.toString();
+
+		// The assertion ensures the toString method provides a detailed representation
+		// that is not empty
+		// and contains the key attributes of the Owner.
+		Assertions.assertThat(ownerString).isNotEmpty();
+		Assertions.assertThat(ownerString).contains("John");
+		Assertions.assertThat(ownerString).contains("Doe");
+		Assertions.assertThat(ownerString).contains("123 Main Street");
+		Assertions.assertThat(ownerString).contains("Springfield");
+		Assertions.assertThat(ownerString).contains("1234567890");
 	}
 
 }
