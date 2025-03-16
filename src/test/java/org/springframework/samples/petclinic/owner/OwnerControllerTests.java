@@ -48,12 +48,12 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*; // Added for additional assertions
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -248,6 +248,32 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Additional tests to verify the behavior of getPet method and kill the survived
+	// mutation
+	@Test
+	void testOwnerGetPetBehavior() throws Exception {
+		Owner owner = george();
+		// Verify that the pet 'Max' exists
+		assertNotNull(owner.getPet("Max"), "Expected pet 'Max' to exist");
+
+		// Verify that a non-existent pet returns null
+		assertNull(owner.getPet("NonExistentPet"), "Expected null for non-existent pet");
+
+		// Test with multiple pets: add a new pet 'Bella'
+		Pet bella = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now());
+		owner.addPet(bella);
+		bella.setId(2);
+
+		// Verify that 'Bella' can be correctly retrieved
+		assertNotNull(owner.getPet("Bella"), "Expected pet 'Bella' to be found after adding it");
+		assertSame(bella, owner.getPet("Bella"), "Expected the found pet to be the newly added 'Bella'");
 	}
 
 }
