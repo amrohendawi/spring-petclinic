@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
+ * This class has been modified to include additional assertions covering edge cases for
+ * the getPet method, ensuring that only the persisted pet is returned when multiple pets
+ * with the same name exist, and that null is returned when no pet matches the given name.
+ *
+ * These modifications help kill mutations that invert conditional logic in getPet.
+ *
  * @author Colin But
  * @author Wick Dynex
  */
@@ -76,14 +83,27 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// Create a persisted pet with name "Max"
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
 		max.setType(dog);
 		max.setName("Max");
 		max.setBirthDate(LocalDate.now());
+		max.setId(1); // persisted pet
 		george.addPet(max);
-		max.setId(1);
+
+		// Create another pet with the same name "Max" but considered new (not persisted)
+		Pet maxNew = new Pet();
+		PetType dogNew = new PetType();
+		dogNew.setName("dog");
+		maxNew.setType(dogNew);
+		maxNew.setName("Max");
+		maxNew.setBirthDate(LocalDate.now());
+		// id is not set so it is considered new
+		george.addPet(maxNew);
+
 		return george;
 	}
 
@@ -99,6 +119,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// add visit to the persisted pet (with id set) only
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +248,18 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			// Additional assertions to test getPet behavior for edge cases
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// For pets with duplicate names, getPet should return the persisted pet
+				// (with non-null id)
+				Pet retrievedPet = owner.getPet("Max");
+				Assertions.assertThat(retrievedPet).isNotNull();
+				Assertions.assertThat(retrievedPet.getId()).isEqualTo(1);
+				// When a pet does not exist, getPet should return null
+				Assertions.assertThat(owner.getPet("Kitty")).isNull();
+			});
 	}
 
 	@Test
