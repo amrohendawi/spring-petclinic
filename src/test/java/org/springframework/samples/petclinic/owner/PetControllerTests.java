@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import static org.assertj.core.api.Assertions.assertThat; // Added for NamedEntity assertions
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.samples.petclinic.model.NamedEntity; // Import for NamedEntity
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,8 +44,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This class has been modified to include dedicated tests for both NamedEntity.toString()
+ * and Owner.toString() in order to ensure their outputs are meaningful and not empty,
+ * thereby killing the survived mutation in Owner.toString().
+ *
+ * Original authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +208,42 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Existing test for NamedEntity.toString()
+	@Test
+	void testNamedEntityToString() {
+		NamedEntity entity = new NamedEntity();
+		entity.setId(42);
+		entity.setName("SampleName");
+
+		String result = entity.toString();
+
+		// Assert that toString returns a non-empty string containing the assigned name
+		// and id
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("SampleName");
+		assertThat(result).contains("42");
+	}
+
+	// New test to explicitly verify the behavior of Owner.toString()
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		// Setting up known values for Owner
+		owner.setId(99);
+		// Assuming Owner has firstName and lastName properties.
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
+		String result = owner.toString();
+
+		// Assert that toString returns a non-empty string containing the assigned id and
+		// names
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("99");
+		assertThat(result).contains("John");
+		assertThat(result).contains("Doe");
 	}
 
 }
