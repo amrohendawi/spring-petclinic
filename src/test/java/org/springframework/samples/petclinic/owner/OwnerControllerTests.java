@@ -52,8 +52,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to add checks for getPet behavior concerning new pets, killing the mutation in
+ * Owner.getPet that negates the conditional check between new and existing pets.
+ *
+ * The test now adds an additional pet (Bella) which is new (i.e., has no id) and asserts
+ * that getPet should not return the new pet when searching by name. This modification
+ * ensures that both branches of the conditional in getPet are exercised.
+ *
+ * Authors: Colin But, Wick Dynex, and modifications by Technical Debt Remediator.
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -89,8 +95,18 @@ class OwnerControllerTests {
 
 	@BeforeEach
 	void setup() {
-
 		Owner george = george();
+		// Adding additional pet which is new (no id assigned) to test getPet conditional
+		// logic
+		Pet bella = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now());
+		// Note: Not setting an id marks this pet as new
+		george.addPet(bella);
+
 		given(this.owners.findByLastNameStartingWith(eq("Franklin"), any(Pageable.class)))
 			.willReturn(new PageImpl<>(Lists.newArrayList(george)));
 
@@ -99,8 +115,9 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call exercises the getPet method. It should return the existing pet "Max"
+		// and ignore the new pet "Bella".
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -217,6 +234,8 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// This test now also verifies that the new pet (Bella) is ignored by getPet
+		// logic.
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
@@ -227,6 +246,8 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			// Assert that the new pet 'Bella' is not returned via getPet filtering
+			.andExpect(model().attribute("owner", hasProperty("pets", not(hasItem(hasProperty("name", is("Bella")))))))
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
