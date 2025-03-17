@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
@@ -51,6 +52,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Additional tests have been added to verify the behavior of Owner.getPet under negative
+ * and boundary scenarios (e.g., pet not found, case insensitivity, and exclusion of new
+ * pets).
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,6 +104,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Ensure that getPet("Max") returns the existing pet for adding a visit
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -248,6 +254,44 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Additional tests to cover negative and boundary scenarios for getPet mutation
+
+	@Test
+	void testGetPetNotFound() {
+		Owner owner = george();
+		// Trying to retrieve a pet that does not exist should return null
+		Assertions.assertNull(owner.getPet("Buddy"));
+	}
+
+	@Test
+	void testGetPetCaseInsensitive() {
+		Owner owner = george();
+		// Retrieve pet using different case to ensure case-insensitive matching
+		Pet pet = owner.getPet("max");
+		Assertions.assertNotNull(pet);
+		Assertions.assertEquals("Max", pet.getName());
+	}
+
+	@Test
+	void testGetPetExcludesNewPets() {
+		// Create an owner with a new pet (id not set implies new)
+		Owner owner = new Owner();
+		owner.setId(2);
+		owner.setFirstName("Alice");
+		owner.setLastName("Smith");
+		owner.setAddress("123 Street");
+		owner.setCity("CityTown");
+		owner.setTelephone("9999999");
+
+		Pet newPet = new Pet();
+		newPet.setName("Buddy");
+		// Do not set an id for newPet, so it should be considered as new
+		owner.addPet(newPet);
+
+		// The getPet method should not return new pets if they are meant to be excluded
+		Assertions.assertNull(owner.getPet("Buddy"));
 	}
 
 }
