@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.samples.petclinic.model.NamedEntity;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,8 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Note: Added a new test method to verify the behavior of NamedEntity.toString() to
+ * address a survived mutation. Additionally, added a test for Owner.toString() to ensure
+ * it returns meaningful information and is not affected by the mutation that caused it to
+ * return an empty string.
+ *
+ * Original authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +209,36 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Additional test to kill mutation in NamedEntity.toString method
+	@Test
+	void testNamedEntityToString() {
+		// Create a NamedEntity and set a known name
+		NamedEntity entity = new NamedEntity();
+		entity.setName("SampleName");
+		// If applicable, set an id as well (uncomment if needed):
+		// entity.setId(1);
+		String result = entity.toString();
+		// Assert that the string representation is not empty and contains the name
+		Assertions.assertThat(result).isNotEmpty();
+		Assertions.assertThat(result).contains("SampleName");
+	}
+
+	// New test to kill mutation in Owner.toString method
+	@Test
+	void testOwnerToString() {
+		// Create an Owner instance and set known properties
+		Owner owner = new Owner();
+		// Assuming Owner extends a Person with firstName and lastName properties
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String result = owner.toString();
+		// Assert that the string representation is not empty and contains the expected
+		// details
+		Assertions.assertThat(result).isNotEmpty();
+		Assertions.assertThat(result).contains("John");
+		Assertions.assertThat(result).contains("Doe");
 	}
 
 }
