@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
@@ -41,6 +42,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * <p>
+ * Added a dedicated unit test for the {@link Owner#toString()} method to validate its
+ * output.
+ * </p>
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +209,22 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added dedicated unit test to verify Owner.toString() method
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+		owner.setCity("Anytown");
+		owner.setTelephone("1234567890");
+
+		String expected = "Owner{id=null, new=true, lastName='Doe', firstName='John', address='123 Main St', city='Anytown', telephone='1234567890'}";
+		// This assertion will fail if Owner.toString() returns an empty string due to
+		// mutation.
+		Assertions.assertEquals(expected, owner.toString());
 	}
 
 }
