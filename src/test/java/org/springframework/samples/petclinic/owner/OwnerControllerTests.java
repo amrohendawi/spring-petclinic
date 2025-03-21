@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,6 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Additional modifications were made to verify the exact behavior of the getPet method.
+ * These modifications test both positive and negative scenarios: 1) When a pet with an
+ * exact matching name is requested, it should be returned (non-null). 2) When a pet with
+ * a non-existing or near-match name is requested, it should return null. This ensures
+ * that any mutation in the conditional logic within getPet is caught by the tests.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -99,8 +107,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call exercises the getPet method for the positive case
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -228,6 +236,15 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to test the behavior of getPet method
+		Owner testOwner = george();
+		// Positive test: Exact match returns the pet
+		assertNotNull(testOwner.getPet("Max"), "getPet should return a pet when an exact match exists.");
+		// Negative test: Non-existent pet name returns null
+		assertNull(testOwner.getPet("NonExistent"), "getPet should return null when no matching pet exists.");
+		// Near-match test: A name that is not an exact match should return null
+		assertNull(testOwner.getPet("Max "), "getPet should return null when the pet name does not exactly match.");
 	}
 
 	@Test
