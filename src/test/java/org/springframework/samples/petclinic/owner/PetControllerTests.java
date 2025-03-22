@@ -28,10 +28,12 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.samples.petclinic.model.NamedEntity;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +43,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added explicit assertions for Owner.toString() to ensure that mutations altering its
+ * return value (e.g. returning an empty string) are caught during testing.
+ *
+ * This modification addresses the survived mutations by asserting that the string
+ * representation of an Owner instance contains its critical state information.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +211,28 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Modified test to explicitly verify the toString method of Owner.
+	@Test
+	void testOwnerToString() {
+		// Create an Owner instance with known values
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+		owner.setCity("Springfield");
+		owner.setTelephone("1234567890");
+		// Optionally, one could set the id or other fields if needed
+		String result = owner.toString();
+		// Verify that the string representation is not empty and contains the key
+		// attributes
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("John");
+		assertThat(result).contains("Doe");
+		assertThat(result).contains("123 Main St");
+		assertThat(result).contains("Springfield");
+		assertThat(result).contains("1234567890");
 	}
 
 }
