@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +43,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Added additional assertions to verify the behavior of NamedEntity.toString method to
+ * ensure that mutations affecting the string representation are detected.
+ *
+ * Note: The Owner class (a subclass of NamedEntity) is used to verify that the toString
+ * method returns a non-empty string containing expected values.
+ *
+ * Additionally, the testProcessCreationFormSuccess method has been enhanced to assert
+ * that the toString method returns a string containing the owner id along with first and
+ * last names, preventing mutations that would return an empty string.
+ *
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -69,6 +79,10 @@ class PetControllerTests {
 		given(this.owners.findPetTypes()).willReturn(Lists.newArrayList(cat));
 
 		Owner owner = new Owner();
+		// Set known values for owner to verify toString output
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
@@ -96,6 +110,18 @@ class PetControllerTests {
 				.param("birthDate", "2015-02-12"))
 			.andExpect(status().is3xxRedirection())
 			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		// Additional assertion to verify the behavior of NamedEntity.toString
+		// Using Owner (which extends NamedEntity) as test subject
+		Owner testOwner = new Owner();
+		testOwner.setId(TEST_OWNER_ID);
+		testOwner.setFirstName("John");
+		testOwner.setLastName("Doe");
+		String representation = testOwner.toString();
+		// Verify that toString returns a non-empty string containing the set id, first
+		// name, and last name
+		assertThat(representation).isNotEmpty();
+		assertThat(representation).contains(Integer.toString(TEST_OWNER_ID)).contains("John").contains("Doe");
 	}
 
 	@Nested
