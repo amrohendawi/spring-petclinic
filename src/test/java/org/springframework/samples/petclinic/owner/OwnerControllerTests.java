@@ -48,12 +48,16 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to add additional coverage for the getPet method to test edge cases. This
+ * ensures that getPet returns non-null for existing pets and null for non-existent pets.
+ *
+ * Authors: Colin But, Wick Dynex, and modifications to cover survived mutations
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -76,6 +80,8 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// Add first pet: Max
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
@@ -84,6 +90,17 @@ class OwnerControllerTests {
 		max.setBirthDate(LocalDate.now());
 		george.addPet(max);
 		max.setId(1);
+
+		// Add second pet: Bella
+		Pet bella = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		bella.setType(cat);
+		bella.setName("Bella");
+		bella.setBirthDate(LocalDate.now());
+		george.addPet(bella);
+		bella.setId(2);
+
 		return george;
 	}
 
@@ -99,8 +116,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Add visit to pet "Max"
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,6 +244,20 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+
+			// Additional assertions to cover the getPet edge cases
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the correct pet when it exists
+				Pet petMax = owner.getPet("Max");
+				assertNotNull(petMax, "Expected to find pet 'Max'");
+				Pet petBella = owner.getPet("Bella");
+				assertNotNull(petBella, "Expected to find pet 'Bella'");
+
+				// Verify that getPet returns null for a non-existent pet
+				Pet nonExistentPet = owner.getPet("NonExistent");
+				assertNull(nonExistentPet, "Expected no pet found for 'NonExistent'");
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
