@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,8 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,6 +100,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Add a visit to the pet "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +229,23 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			// Additional assertions to test negative/edge cases in getPet method
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the correct pet when it exists
+				assertNotNull(owner.getPet("Max"), "Existing pet 'Max' should be returned.");
+				// Add a new pet (considered 'new' because it doesn't have an id set)
+				Pet newPet = new Pet();
+				newPet.setName("Buddy");
+				newPet.setBirthDate(LocalDate.now());
+				owner.addPet(newPet);
+				// The getPet method should not return a pet that is new, so it should
+				// return null for 'Buddy'
+				assertNull(owner.getPet("Buddy"), "New pet 'Buddy' should not be returned by getPet.");
+				// Additionally, assert that searching for a non-existent pet returns null
+				assertNull(owner.getPet("NonExistent"), "Non-existent pet should return null.");
+			});
 	}
 
 	@Test
