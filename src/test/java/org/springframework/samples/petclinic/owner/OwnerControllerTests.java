@@ -29,6 +29,7 @@ import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -47,13 +48,18 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -76,6 +82,7 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
@@ -84,6 +91,18 @@ class OwnerControllerTests {
 		max.setBirthDate(LocalDate.now());
 		george.addPet(max);
 		max.setId(1);
+
+		// Added an additional pet to cover multiple pet retrieval scenarios and negative
+		// case
+		Pet buddy = new Pet();
+		PetType cat = new PetType();
+		cat.setName("cat");
+		buddy.setType(cat);
+		buddy.setName("Buddy");
+		buddy.setBirthDate(LocalDate.now());
+		george.addPet(buddy);
+		buddy.setId(2);
+
 		return george;
 	}
 
@@ -99,6 +118,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Ensure that the pet "Max" has a visit, mocking typical behavior
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,6 +247,18 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			.andDo(result -> {
+				// Additional assertions to cover both positive and negative pet retrieval
+				// scenarios induced by getPet variations
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the correct pets when a matching name is
+				// provided
+				assertNotNull(owner.getPet("Max"));
+				assertNotNull(owner.getPet("Buddy"));
+				// Verify that getPet returns null when no pet with the specified name
+				// exists
+				assertNull(owner.getPet("NotExist"));
+			})
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
