@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -50,11 +51,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
- * script.
+ * script.</li>
  * <li>An {@link org.springframework.context.ApplicationContext ApplicationContext} is
  * also inherited and can be used for explicit bean lookup if necessary.</li>
  * </ul>
@@ -98,6 +99,30 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+
+		// Added test to verify that getPet returns the correct pet when a valid id is
+		// provided.
+		Pet existingPet = owner.getPets().get(0);
+		int petId = existingPet.getId();
+		Pet petById = owner.getPet(petId);
+		assertThat(petById).as("getPet should return the same pet for a valid id").isNotNull();
+		assertThat(petById).isEqualTo(existingPet);
+
+		// Added test to verify getPet(String) returns the correct pet when a valid name
+		// is provided.
+		Pet petByName = owner.getPet(existingPet.getName());
+		assertThat(petByName).as("getPet should return the same pet for a valid pet name").isNotNull();
+		assertThat(petByName).isEqualTo(existingPet);
+
+		// Added negative test case for getPet method to verify behavior when pet name is
+		// not found
+		assertThat(owner.getPet("non-existent")).as("getPet should return null when no pet with the given name exists")
+			.isNull();
+
+		// Added additional negative test cases for getPet method to verify behavior when
+		// pet id is not found or invalid
+		assertThat(owner.getPet(999)).as("getPet should return null when no pet with the given id exists").isNull();
+		assertThat(owner.getPet(-1)).as("getPet should return null when given a negative pet id").isNull();
 	}
 
 	@Test
@@ -242,6 +267,21 @@ class ClinicServiceTests {
 			.element(0)
 			.extracting(Visit::getDate)
 			.isNotNull();
+	}
+
+	// Added tests to cover edge cases for the addVisit method to enforce input validation
+	@Test
+	void shouldThrowExceptionForNullVisit() {
+		Optional<Owner> optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		Owner owner6 = optionalOwner.get();
+
+		// Retrieve a valid pet ID
+		Pet pet7 = owner6.getPet(7);
+		int validPetId = pet7.getId();
+
+		// Expect an IllegalArgumentException when passing a null Visit
+		assertThatThrownBy(() -> owner6.addVisit(validPetId, null)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 }
