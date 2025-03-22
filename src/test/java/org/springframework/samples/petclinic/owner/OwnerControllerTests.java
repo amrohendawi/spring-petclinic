@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Enhanced to cover negative scenarios for the getPet method in the Owner class, ensuring
+ * that a lookup for a non-existent pet returns null. This additional assertion will help
+ * detect mutations that negate the internal conditional logic of getPet.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -227,7 +232,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Additional assertion for a pet name that does not exist should return
+				// null.
+				Assertions.assertThat(owner.getPet("Buddy")).as("Expected no pet with name 'Buddy'").isNull();
+			});
 	}
 
 	@Test
