@@ -1,21 +1,6 @@
-/*
- * Copyright 2012-2019 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -39,11 +24,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+// Import the NamedEntity class to test its toString method
+import org.springframework.samples.petclinic.model.NamedEntity;
+
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +190,42 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to validate the behavior of NamedEntity.toString()
+	@Test
+	void testNamedEntityToString() {
+		// Create an instance of NamedEntity with identifiable state
+		NamedEntity entity = new NamedEntity();
+		entity.setId(42);
+		entity.setName("TestEntity");
+
+		// Call the toString() method
+		String result = entity.toString();
+
+		// Assert that the result is not empty and contains expected substrings
+		Assertions.assertThat(result).isNotEmpty();
+		Assertions.assertThat(result).contains("42");
+		Assertions.assertThat(result).contains("TestEntity");
+	}
+
+	// Added new test to validate the behavior of Owner.toString()
+	@Test
+	void testOwnerToString() {
+		// Create an instance of Owner with identifiable state
+		Owner owner = new Owner();
+		owner.setId(100);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
+		// Call the toString() method
+		String result = owner.toString();
+
+		// Assert that the result is not empty and contains key owner properties
+		Assertions.assertThat(result).isNotEmpty();
+		Assertions.assertThat(result).contains("100");
+		Assertions.assertThat(result).contains("John");
+		Assertions.assertThat(result).contains("Doe");
 	}
 
 }
