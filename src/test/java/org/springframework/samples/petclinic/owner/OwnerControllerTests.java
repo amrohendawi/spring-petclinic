@@ -28,7 +28,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -40,6 +42,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +52,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
@@ -227,7 +236,30 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				ModelAndView mv = result.getModelAndView();
+				Owner owner = (Owner) mv.getModel().get("owner");
+
+				// Test retrieval of an existing, persisted pet that meets criteria
+				Pet petMax = owner.getPet("Max");
+				assertNotNull(petMax, "getPet should return the pet when it exists and is persisted");
+				assertEquals(1, petMax.getId(), "The pet returned should have the correct id");
+
+				// Test that getPet is case sensitive: using a different case should
+				// return null
+				Pet petLowerCase = owner.getPet("max");
+				assertNull(petLowerCase, "getPet should be case sensitive and return null for non exact match");
+
+				// Test that new pets (not persisted, id null) are not returned
+				Pet newPet = new Pet();
+				newPet.setName("Buddy");
+				newPet.setBirthDate(LocalDate.now());
+				// newPet is not persisted as id is not set
+				owner.addPet(newPet);
+				Pet fetchedBuddy = owner.getPet("Buddy");
+				assertNull(fetchedBuddy, "getPet should not return a new pet (id null) as it is not persisted");
+			});
 	}
 
 	@Test
