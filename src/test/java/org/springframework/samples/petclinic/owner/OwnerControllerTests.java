@@ -29,7 +29,6 @@ import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -48,6 +47,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test class for {@link OwnerController}
@@ -217,6 +219,34 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Retrieve the owner instance and perform additional assertions
+		Owner owner = george();
+		// Assert that getPet correctly returns a pet when the name matches
+		Pet petMax = owner.getPet("Max");
+		assertNotNull(petMax);
+		assertEquals("Max", petMax.getName());
+
+		// Add an additional pet to the owner to test multiple pets scenario
+		Pet buddy = new Pet();
+		buddy.setName("Buddy");
+		buddy.setBirthDate(LocalDate.now());
+		buddy.setType(petMax.getType());
+		owner.addPet(buddy);
+
+		// Assert that searching for a non-existing pet returns null
+		assertNull(owner.getPet("NonExistent"));
+
+		// Add another pet with the same name "Max" to test if the first one is selected
+		Pet anotherMax = new Pet();
+		anotherMax.setName("Max");
+		anotherMax.setBirthDate(LocalDate.now().minusDays(1));
+		anotherMax.setType(petMax.getType());
+		owner.addPet(anotherMax);
+
+		// Expect that getPet("Max") returns the first matching pet (the original one)
+		assertEquals(petMax, owner.getPet("Max"));
+
+		// Proceed with the MVC call as in the original test
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
