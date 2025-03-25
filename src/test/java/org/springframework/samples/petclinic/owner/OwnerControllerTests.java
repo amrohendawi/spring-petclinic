@@ -29,10 +29,6 @@ import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
-import java.time.LocalDate;
-import java.util.Optional;
-
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -48,12 +44,15 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -227,7 +226,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(mvcResult -> {
+				// Retrieve the owner from the model and test the getPet method when pet
+				// is not found
+				Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+				assertNull(owner.getPet("UnknownPet"), "Expected getPet to return null when pet is not found");
+			});
 	}
 
 	@Test
