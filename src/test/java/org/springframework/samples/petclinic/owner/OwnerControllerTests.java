@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -217,6 +218,27 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Enhanced assertions to cover getPet edge cases
+		Owner testOwner = george();
+		// Verify that a matching pet name returns the correct pet
+		assertThat(testOwner.getPet("Max")).isNotNull();
+		// Verify that a non-existent pet name returns null
+		assertThat(testOwner.getPet("Unknown")).isNull();
+
+		// Add an additional pet with a similar name to test that the exact match is
+		// returned
+		Pet petMaximus = new Pet();
+		petMaximus.setName("Maximus");
+		petMaximus.setBirthDate(LocalDate.now());
+		testOwner.addPet(petMaximus);
+		// The original pet 'Max' should still be returned when searching for "Max"
+		Pet maxPet = testOwner.getPet("Max");
+		assertThat(maxPet.getName()).isEqualTo("Max");
+		// Also check that searching for "Maximus" returns the newly added pet
+		assertThat(testOwner.getPet("Maximus")).isNotNull().extracting("name").isEqualTo("Maximus");
+		// Optionally, check case insensitivity if applicable
+		assertThat(testOwner.getPet("max")).isNotNull().extracting("name").isEqualTo("Max");
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
