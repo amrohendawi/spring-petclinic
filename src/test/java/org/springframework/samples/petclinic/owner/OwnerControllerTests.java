@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +49,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
@@ -76,6 +82,7 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
@@ -84,6 +91,15 @@ class OwnerControllerTests {
 		max.setBirthDate(LocalDate.now());
 		george.addPet(max);
 		max.setId(1);
+
+		// Adding a duplicate pet with the same name that is considered new (id is not
+		// set) to test the getPet logic
+		Pet duplicateMax = new Pet();
+		duplicateMax.setType(dog);
+		duplicateMax.setName("Max");
+		duplicateMax.setBirthDate(LocalDate.now());
+		george.addPet(duplicateMax);
+
 		return george;
 	}
 
@@ -99,6 +115,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call exercises the getPet method. It should return the non-new pet with
+		// id=1 even if a duplicate exists.
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +245,18 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				// Retrieve the owner from the model and exercise the getPet method
+				// further to test edge cases
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// When requesting a pet name that does not exist, getPet should return
+				// null
+				assertNull(owner.getPet("NotExist"), "Expected getPet to return null for non-existent pet name");
+				// When multiple pets have the same name, getPet should return the
+				// persisted pet (non-new) i.e., the one with id=1
+				Assertions.assertThat(owner.getPet("Max").getId()).isEqualTo(1);
+			});
 	}
 
 	@Test
