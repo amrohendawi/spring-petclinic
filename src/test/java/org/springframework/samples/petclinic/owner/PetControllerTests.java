@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -203,6 +204,21 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to verify the Owner.toString method behavior to prevent mutations
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(42);
+		// Assuming Owner has firstName and lastName properties for demonstration
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerString = owner.toString();
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("42");
+		assertThat(ownerString).contains("John");
+		assertThat(ownerString).contains("Doe");
 	}
 
 }
