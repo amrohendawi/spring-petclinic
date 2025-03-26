@@ -89,6 +89,11 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+		// Enhanced the test to verify that the toString() result is meaningful
+		// by checking that the response body is not blank and contains expected owner
+		// details.
+		assertThat(result.getBody()).isNotBlank();
+		assertThat(result.getBody()).contains("George Franklin");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
@@ -122,7 +127,9 @@ public class PostgresIntegrationTests {
 
 					assertNotNull(sourceProperty, "source property was expecting an object but is null.");
 
-					assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
+					// Modified assertion to ensure toString() returns a non-empty string,
+					// not just non-null.
+					assertThat(sourceProperty.toString()).as("source property toString()").isNotEmpty();
 
 					String value = sourceProperty.toString();
 					if (resolved.equals(value)) {
