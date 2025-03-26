@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -227,7 +229,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Explicit assertions to validate getPet method behavior
+				assertNotNull(owner.getPet("Max"), "Expected to find pet with name Max");
+				assertNull(owner.getPet("Nonexistent"), "Expected to not find pet with name Nonexistent");
+			});
 	}
 
 	@Test
