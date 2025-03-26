@@ -40,6 +40,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -99,6 +101,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call exercises getPet method; adding a visit to the pet named "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -248,6 +251,19 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added dedicated unit tests for the getPet method to cover both branches of its
+	// conditional logic
+	@Test
+	void testGetPetMethod() {
+		Owner owner = george();
+		// Test when a pet with the given name exists
+		Pet pet = owner.getPet("Max");
+		assertNotNull(pet, "Expected to find a pet named 'Max'");
+		// Test when a pet with the given name does not exist
+		Pet nonExistentPet = owner.getPet("Buddy");
+		assertNull(nonExistentPet, "Expected no pet to be found with the name 'Buddy'");
 	}
 
 }
