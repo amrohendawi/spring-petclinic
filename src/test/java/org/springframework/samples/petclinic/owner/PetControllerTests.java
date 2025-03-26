@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -42,6 +44,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
+ * Additional assertions have been added to validate the behavior of Owner.toString,
+ * ensuring that it does not return an empty string and contains expected pet information.
+ *
  * @author Colin But
  * @author Wick Dynex
  */
@@ -61,6 +66,9 @@ class PetControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	// Added field for testing Owner.toString
+	private Owner testOwner;
+
 	@BeforeEach
 	void setup() {
 		PetType cat = new PetType();
@@ -78,6 +86,9 @@ class PetControllerTests {
 		pet.setName("petty");
 		dog.setName("doggy");
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		// Store the owner instance to test toString method
+		testOwner = owner;
 	}
 
 	@Test
@@ -86,6 +97,12 @@ class PetControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
 			.andExpect(model().attributeExists("pet"));
+
+		// Added assertion to validate Owner.toString
+		String ownerString = testOwner.toString();
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("petty");
+		assertThat(ownerString).contains("doggy");
 	}
 
 	@Test
