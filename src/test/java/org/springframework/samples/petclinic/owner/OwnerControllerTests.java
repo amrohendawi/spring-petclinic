@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -47,10 +49,19 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to add boundary condition checks for the getPet method in Owner to kill
+ * survived mutations. In particular, a duplicate pet with the same name but marked as new
+ * is added, and the testShowOwner method asserts that getPet returns the persistent pet
+ * (with a non-null id) ignoring the new pet.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -76,6 +87,8 @@ class OwnerControllerTests {
 		george.setAddress("110 W. Liberty St.");
 		george.setCity("Madison");
 		george.setTelephone("6085551023");
+
+		// Create a persistent pet "Max"
 		Pet max = new Pet();
 		PetType dog = new PetType();
 		dog.setName("dog");
@@ -84,6 +97,14 @@ class OwnerControllerTests {
 		max.setBirthDate(LocalDate.now());
 		george.addPet(max);
 		max.setId(1);
+
+		// Create a duplicate pet with the same name but marked as new (id not set)
+		Pet newMax = new Pet();
+		newMax.setType(dog);
+		newMax.setName("Max");
+		newMax.setBirthDate(LocalDate.now());
+		george.addPet(newMax);
+
 		return george;
 	}
 
@@ -99,6 +120,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// This call will use the getPet method, and thanks to the modification, it should
+		// return the persistent pet (id=1) ignoring the new pet.
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -227,7 +250,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				// Additional check: verify that getPet returns the persistent pet (with
+				// id=1), ignoring any new pet entries
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				Pet pet = owner.getPet("Max");
+				assertThat(pet.getId()).as("Persistent pet should have id 1").isEqualTo(1);
+			});
 	}
 
 	@Test
