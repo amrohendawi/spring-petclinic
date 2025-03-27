@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -217,6 +218,11 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Added assertion to test the alternative path of getPet when the pet is not
+		// found
+		Owner testOwner = george();
+		Assertions.assertThat(testOwner.getPet("NonExisting")).isNull();
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
