@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -69,6 +69,12 @@ class PetControllerTests {
 		given(this.owners.findPetTypes()).willReturn(Lists.newArrayList(cat));
 
 		Owner owner = new Owner();
+		// Set expected fields for Owner to be used in the toString test
+		owner.setId(TEST_OWNER_ID);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
@@ -203,6 +209,22 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Additional test to verify the correct behavior of Owner.toString method
+	@Test
+	void testOwnerToString() {
+		// Create an owner with known values
+		Owner owner = new Owner();
+		owner.setId(TEST_OWNER_ID);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+
+		String ownerString = owner.toString();
+		// Assert that the toString output is not empty and contains expected information
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("John").contains("Doe").contains("123 Main St");
 	}
 
 }
