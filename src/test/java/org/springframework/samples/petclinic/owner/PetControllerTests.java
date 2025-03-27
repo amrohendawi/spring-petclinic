@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -203,6 +204,23 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test for Owner.toString to kill the survived mutation
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(42);
+		// Assuming Owner has setters for firstName and lastName
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
+		String ownerString = owner.toString();
+		// Validate that the toString output contains the essential properties
+		assertThat(ownerString).isNotEmpty();
+		assertThat(ownerString).contains("John");
+		assertThat(ownerString).contains("Doe");
+		assertThat(ownerString).contains("42");
 	}
 
 }
