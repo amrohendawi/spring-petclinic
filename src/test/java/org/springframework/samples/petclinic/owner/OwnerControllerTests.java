@@ -48,6 +48,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
@@ -227,7 +229,14 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(mvcResult -> {
+				Owner owner = (Owner) mvcResult.getModelAndView().getModel().get("owner");
+				// Verify that getPet returns the existing pet when present
+				assertNotNull(owner.getPet("Max"), "Expected pet 'Max' to be found");
+				// Verify that getPet returns null when the pet is not found
+				assertNull(owner.getPet("NonExisting"), "Expected no pet for 'NonExisting'");
+			});
 	}
 
 	@Test
