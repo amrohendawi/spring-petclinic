@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added a test for Owner.toString to catch any mutations affecting its output.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +206,21 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test to verify the output of Owner.toString() to catch mutations
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(42);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerString = owner.toString();
+		// Assert that the toString output is not empty and contains expected substrings
+		Assertions.assertThat(ownerString).isNotEmpty();
+		Assertions.assertThat(ownerString).contains("42");
+		Assertions.assertThat(ownerString).contains("John");
+		Assertions.assertThat(ownerString).contains("Doe");
 	}
 
 }
