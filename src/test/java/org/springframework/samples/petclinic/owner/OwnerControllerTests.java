@@ -48,12 +48,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * author Colin But author Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -227,7 +228,15 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				// Retrieve the owner from the model and check getPet behavior
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Positive case: Existing pet "Max" should be returned
+				assertNotNull(owner.getPet("Max"), "Expected to find a pet named 'Max'");
+				// Negative case: Non-existent pet should return null
+				assertNull(owner.getPet("NonExistent"), "Expected to not find a pet named 'NonExistent'");
+			});
 	}
 
 	@Test
