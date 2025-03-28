@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -50,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +99,41 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// Additional assertions to cover negative branch in getPet(String)
+		assertThat(owner.getPet("nonExistentPet")).isNull();
+		// Additional assertions to cover negative branch in getPet(int)
+		assertThat(owner.getPet(9999)).isNull();
+
+		// New assertions to verify correct branch of getPet(int) when pet exists
+		Pet existingPet = owner.getPets().get(0);
+		assertThat(owner.getPet(existingPet.getId())).isEqualTo(existingPet);
+
+		// Additional test for multiple pets scenario to cover edge conditions in getPet
+		Pet newPet = new Pet();
+		newPet.setName("doggy");
+		newPet.setType(existingPet.getType());
+		newPet.setBirthDate(LocalDate.now());
+		owner.addPet(newPet);
+		this.owners.save(owner);
+
+		Optional<Owner> optionalOwnerUpdated = this.owners.findById(1);
+		assertThat(optionalOwnerUpdated).isPresent();
+		Owner updatedOwner = optionalOwnerUpdated.get();
+		assertThat(updatedOwner.getPets()).hasSize(2);
+
+		Pet doggy = updatedOwner.getPet("doggy");
+		assertThat(doggy).isNotNull();
+
+		// Verify that getPet(int) returns the correct pet for each pet in a multiple pet
+		// scenario
+		Pet petByIdExisting = updatedOwner.getPet(existingPet.getId());
+		assertThat(petByIdExisting).isEqualTo(existingPet);
+
+		Pet petByIdDoggy = updatedOwner.getPet(doggy.getId());
+		assertThat(petByIdDoggy).isEqualTo(doggy);
+
+		// Negative test: non-existent pet id returns null
+		assertThat(updatedOwner.getPet(99999)).isNull();
 	}
 
 	@Test
@@ -157,6 +193,7 @@ class ClinicServiceTests {
 
 		int found = owner6.getPets().size();
 
+		// Insert first pet "bowser"
 		Pet pet = new Pet();
 		pet.setName("bowser");
 		Collection<PetType> types = this.owners.findPetTypes();
@@ -170,10 +207,43 @@ class ClinicServiceTests {
 		optionalOwner = this.owners.findById(6);
 		assertThat(optionalOwner).isPresent();
 		owner6 = optionalOwner.get();
-		assertThat(owner6.getPets()).hasSize(found + 1);
-		// checks that id has been generated
+		// Verify that the pet "bowser" was inserted and has an id
 		pet = owner6.getPet("bowser");
+		assertThat(pet).isNotNull();
 		assertThat(pet.getId()).isNotNull();
+
+		// Additional check for negative scenario using getPet(String): getPet with a
+		// non-existing name returns null
+		assertThat(owner6.getPet("nonExisting")).isNull();
+
+		// Additional check for negative scenario using getPet(int): getPet with a
+		// non-existing id returns null
+		assertThat(owner6.getPet(9999)).isNull();
+
+		// Additional test for multiple pets scenario
+		int currentCount = owner6.getPets().size();
+		Pet petFluffy = new Pet();
+		petFluffy.setName("fluffy");
+		petFluffy.setType(EntityUtils.getById(types, PetType.class, 2));
+		petFluffy.setBirthDate(LocalDate.now());
+		owner6.addPet(petFluffy);
+		assertThat(owner6.getPets()).hasSize(currentCount + 1);
+
+		this.owners.save(owner6);
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		// Verify that both pets can be retrieved correctly
+		assertThat(owner6.getPet("bowser")).isNotNull();
+		assertThat(owner6.getPet("fluffy")).isNotNull();
+		assertThat(owner6.getPet("nonExisting")).isNull();
+
+		// New assertions to verify getPet(int id) returns the correct pet in case of
+		// multiple pets
+		Pet petBowser = owner6.getPet("bowser");
+		Pet petFluffyRetrieved = owner6.getPet("fluffy");
+		assertThat(owner6.getPet(petBowser.getId())).isEqualTo(petBowser);
+		assertThat(owner6.getPet(petFluffyRetrieved.getId())).isEqualTo(petFluffyRetrieved);
 	}
 
 	@Test
@@ -195,6 +265,8 @@ class ClinicServiceTests {
 		owner6 = optionalOwner.get();
 		pet7 = owner6.getPet(7);
 		assertThat(pet7.getName()).isEqualTo(newName);
+		// Additional negative test for getPet(int) with non-existent id
+		assertThat(owner6.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -223,9 +295,15 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		assertThat(pet7.getVisits()).hasSize(found + 1).allMatch(value -> value.getId() != null);
+
+		// Negative test: Passing null visit should throw IllegalArgumentException
+		assertThatThrownBy(() -> owner6.addVisit(pet7.getId(), null)).isInstanceOf(IllegalArgumentException.class);
+
+		// Negative test: Passing null pet id should throw IllegalArgumentException
+		Visit anotherVisit = new Visit();
+		anotherVisit.setDescription("test null pet id");
+		assertThatThrownBy(() -> owner6.addVisit(null, anotherVisit)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
@@ -237,11 +315,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
