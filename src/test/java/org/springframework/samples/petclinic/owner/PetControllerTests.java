@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +42,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Added a test for Owner.toString to ensure that the string representation reflects the
+ * state of the object and kills the mutation that returns an empty string.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +207,22 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	@Test
+	void testOwnerToString() {
+		// Create an Owner instance and set properties
+		Owner owner = new Owner();
+		owner.setId(123);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
+		String ownerString = owner.toString();
+
+		// Assert that the toString method returns a string containing the expected fields
+		assertTrue(ownerString.contains("123"), "Owner.toString() should contain the id");
+		assertTrue(ownerString.contains("John"), "Owner.toString() should contain the first name");
+		assertTrue(ownerString.contains("Doe"), "Owner.toString() should contain the last name");
 	}
 
 }
