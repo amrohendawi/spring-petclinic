@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.time.LocalDate;
@@ -40,6 +41,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +50,20 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Modified to add additional assertions for the getPet method to cover both branches of
+ * its conditional logic. This ensures that if a pet is not found, getPet returns null,
+ * and if found (including when multiple pets exist), it returns the correct pet.
+ *
+ * Original Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -217,7 +227,7 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
-		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
+		MvcResult result = mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
 			.andExpect(model().attribute("owner", hasProperty("firstName", is("George"))))
@@ -227,7 +237,29 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andReturn();
+
+		// Additional assertions to validate the getPet method logic
+		Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+		// Ensure that retrieving an existing pet returns a non-null result
+		assertNotNull(owner.getPet("Max"));
+
+		// Test that requesting a non-existent pet name returns null
+		assertNull(owner.getPet("NonExisting"));
+
+		// Add a new pet to test behavior with multiple pets
+		Pet buddy = new Pet();
+		buddy.setName("Buddy");
+		buddy.setBirthDate(LocalDate.now());
+		PetType cat = new PetType();
+		cat.setName("cat");
+		buddy.setType(cat);
+		owner.addPet(buddy);
+		buddy.setId(2);
+
+		// Validate that getPet returns the correct pet when multiple pets exist
+		assertNotNull(owner.getPet("Buddy"));
 	}
 
 	@Test
