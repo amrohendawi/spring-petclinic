@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +203,27 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added test for Owner.toString to catch mutations that could return an empty string.
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		// Setting key attributes for Owner
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		owner.setAddress("123 Main St");
+		owner.setCity("Anytown");
+		owner.setTelephone("1234567890");
+
+		String ownerString = owner.toString();
+		// Verify that toString returns a meaningful string representation containing key
+		// attribute values.
+		assertThat(ownerString).isNotEmpty()
+			.contains("John")
+			.contains("Doe")
+			.contains("123 Main St")
+			.contains("Anytown");
 	}
 
 }
