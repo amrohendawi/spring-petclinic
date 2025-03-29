@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,7 +102,6 @@ class OwnerControllerTests {
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -227,7 +228,59 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify branch when pet exists
+				Pet petFound = owner.getPet("Max");
+				assertThat(petFound).isNotNull();
+				assertThat(petFound.getId()).isEqualTo(1);
+
+				// Verify branch when pet does not exist - a new pet should be created
+				// with the given name
+				Pet newPet = owner.getPet("Bella");
+				assertThat(newPet).isNotNull();
+				assertThat(newPet.getName()).isEqualTo("Bella");
+				// Additionally, ensure the new pet is not already part of the owner's
+				// pets collection
+				assertThat(owner.getPets()).doesNotContain(newPet);
+
+				// Additional assertions to cover the negated branch of the conditional in
+				// getPet
+				// Verify case insensitive matching: calling getPet with lower case "max"
+				// returns the existing pet
+				Pet petLowerCase = owner.getPet("max");
+				assertThat(petLowerCase).isNotNull();
+				assertThat(petLowerCase.getId()).isEqualTo(petFound.getId());
+
+				// Verify that a partial pet name does not match the existing pet and
+				// returns null
+				Pet petPartial = owner.getPet("Ma");
+				assertThat(petPartial).isNull();
+
+				// New modifications: test behavior when multiple pets exist to ensure
+				// correct selection and negative matching
+				Pet petCharlie = new Pet();
+				petCharlie.setId(2);
+				petCharlie.setName("Charlie");
+				petCharlie.setBirthDate(LocalDate.now());
+				owner.addPet(petCharlie);
+
+				// Verify that getPet retrieves the correct pet when multiple pets are
+				// present
+				Pet fetchedCharlie = owner.getPet("Charlie");
+				assertThat(fetchedCharlie).isNotNull();
+				assertThat(fetchedCharlie.getId()).isEqualTo(2);
+
+				// Verify case insensitive matching for the new pet
+				Pet fetchedCharlieLower = owner.getPet("charlie");
+				assertThat(fetchedCharlieLower).isNotNull();
+				assertThat(fetchedCharlieLower.getId()).isEqualTo(2);
+
+				// Verify that a partial name does not erroneously match
+				Pet petPartialCharlie = owner.getPet("Char");
+				assertThat(petPartialCharlie).isNull();
+			});
 	}
 
 	@Test
