@@ -44,6 +44,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
@@ -73,7 +74,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -86,6 +87,21 @@ public class PostgresIntegrationTests {
 
 	@Test
 	void testOwnerDetails() {
+		// Added validation for Owner.toString() to assert that it returns a non-empty and
+		// informative string
+		Owner owner = new Owner();
+		owner.setId(1);
+		owner.setFirstName("George");
+		owner.setLastName("Franklin");
+		String ownerString = owner.toString();
+		assertThat(ownerString).isNotEmpty()
+			.as("Owner.toString() should not be empty")
+			.contains("1", "George", "Franklin");
+
+		// New assertion to check for the specific expected output of toString()
+		String expectedOwnerString = "Owner{id=1, firstName='George', lastName='Franklin'}";
+		assertThat(ownerString).isEqualTo(expectedOwnerString);
+
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -138,8 +154,8 @@ public class PostgresIntegrationTests {
 		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
 			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
 			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
+				if (source instanceof EnumerablePropertySource) {
+					sources.add((EnumerablePropertySource<?>) source);
 				}
 			}
 			return sources;
