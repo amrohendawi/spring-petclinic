@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -47,7 +48,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
@@ -99,6 +104,7 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Add a visit to the pet named "Max"
 		george.getPet("Max").getVisits().add(visit);
 
 	}
@@ -228,6 +234,37 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to cover negative scenarios related to getPet
+		Owner owner = george();
+		// Verify that getPet returns the pet when the name matches
+		assertThat(owner.getPet("Max")).isNotNull();
+		// Verify that getPet returns null when the pet name does not exist
+		assertThat(owner.getPet("NonExistent")).isNull();
+
+		// Additional edge case: when multiple pets with the same name exist,
+		// getPet should return the existing pet that is not new (has an id) and ignore
+		// new pets.
+		Pet persistentPet = owner.getPet("Max");
+		// Create a new pet with the same name which is considered "new" (id is null)
+		Pet newMax = new Pet();
+		newMax.setName("Max");
+		newMax.setBirthDate(LocalDate.now());
+		newMax.setType(persistentPet.getType());
+		owner.addPet(newMax);
+		// getPet should still return the persistent pet with id set
+		assertThat(owner.getPet("Max")).isNotNull();
+		assertThat(owner.getPet("Max").getId()).isEqualTo(1);
+
+		// Additional test: if only a new pet exists, getPet should return null.
+		Pet newBella = new Pet();
+		newBella.setName("Bella");
+		newBella.setBirthDate(LocalDate.now());
+		PetType cat = new PetType();
+		cat.setName("cat");
+		newBella.setType(cat);
+		owner.addPet(newBella);
+		assertThat(owner.getPet("Bella")).isNull();
 	}
 
 	@Test
