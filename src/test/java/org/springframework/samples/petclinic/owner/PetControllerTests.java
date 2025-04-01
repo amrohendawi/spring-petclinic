@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,11 +40,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+// Import for NamedEntity
+import org.springframework.samples.petclinic.model.NamedEntity;
+
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -203,6 +206,35 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Additional test to specifically validate the behavior of NamedEntity.toString() and
+	// Owner.toString()
+	@Test
+	void testNamedEntityToString() {
+		// Test for NamedEntity
+		NamedEntity entity = new NamedEntity();
+		entity.setId(100);
+		entity.setName("TestEntity");
+		String result = entity.toString();
+		// Assert that the toString method returns a non-empty string containing the id
+		// and name
+		assertThat(result).isNotEmpty();
+		assertThat(result).contains("100");
+		assertThat(result).contains("TestEntity");
+
+		// Test for Owner
+		Owner owner = new Owner();
+		owner.setId(101);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerResult = owner.toString();
+		// Assert that the toString method returns a non-empty string containing key Owner
+		// attributes
+		assertThat(ownerResult).isNotEmpty();
+		assertThat(ownerResult).contains("101");
+		assertThat(ownerResult).contains("John");
+		assertThat(ownerResult).contains("Doe");
 	}
 
 }
