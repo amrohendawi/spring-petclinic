@@ -47,13 +47,18 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -228,6 +233,22 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to cover Owner.getPet edge cases
+		Owner owner = this.owners.findById(TEST_OWNER_ID).get();
+		// Verify that getPet returns the existing pet when found
+		assertNotNull(owner.getPet("Max"), "Expected pet 'Max' to exist");
+		// Verify that getPet returns null for a non-existent pet
+		assertNull(owner.getPet("Unknown"), "Expected null for non-existing pet 'Unknown'");
+		// Verify behavior when pet is newly added (i.e., in a 'new' state)
+		Pet newPet = new Pet();
+		newPet.setName("Buddy");
+		newPet.setBirthDate(LocalDate.now());
+		PetType petType = new PetType();
+		petType.setName("dog");
+		newPet.setType(petType);
+		owner.addPet(newPet);
+		assertNotNull(owner.getPet("Buddy"), "Expected pet 'Buddy' to be found even if it is new");
 	}
 
 	@Test
