@@ -50,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +98,22 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+
+		// Additional assertions to explicitly verify getPet behavior with both name and
+		// id queries
+		Pet petByName = owner.getPet(owner.getPets().get(0).getName());
+		Pet petById = owner.getPet(owner.getPets().get(0).getId());
+		assertThat(petByName).isNotNull();
+		assertThat(petById).isNotNull();
+		assertThat(petByName.getId()).isEqualTo(petById.getId());
+
+		// New assertions to check edge cases and ensure the correct conditional logic
+		// When passing a null or empty name, getPet should return null
+		assertThat(owner.getPet((String) null)).isNull();
+		assertThat(owner.getPet("")).isNull();
+
+		// When passing an invalid id, getPet should return null
+		assertThat(owner.getPet(-1)).isNull();
 	}
 
 	@Test
@@ -174,6 +190,10 @@ class ClinicServiceTests {
 		// checks that id has been generated
 		pet = owner6.getPet("bowser");
 		assertThat(pet.getId()).isNotNull();
+
+		// Additional assertions to check behavior for non-existent pets
+		assertThat(owner6.getPet("nonExistentPet")).isNull();
+		assertThat(owner6.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -223,9 +243,13 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Re-fetch the Owner to verify the persisted state after adding the Visit
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		pet7 = owner6.getPet(7);
+
+		assertThat(pet7.getVisits()).hasSize(found + 1).allMatch(value -> value.getId() != null);
 	}
 
 	@Test
@@ -237,11 +261,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
