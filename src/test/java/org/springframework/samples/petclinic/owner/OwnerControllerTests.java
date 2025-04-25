@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -248,6 +249,15 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// New test to cover the case where the pet does not exist, ensuring Owner#getPet
+	// behaves as expected
+	@Test
+	void testGetPetNonExistent() {
+		Owner owner = george();
+		// Attempt to retrieve a pet with a name that does not exist
+		assertNull(owner.getPet("NonExistentPet"), "Expected null when requesting a pet that does not exist");
 	}
 
 }
