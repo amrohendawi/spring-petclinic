@@ -50,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +98,20 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// New positive assertion for getPet method using pet name
+		Pet existingPet = owner.getPets().get(0);
+		Pet petByName = owner.getPet(existingPet.getName());
+		assertThat(petByName).isNotNull();
+		assertThat(petByName).isEqualTo(existingPet);
+
+		// Added assertion: Test getPet(int id) returns the correct pet when a valid pet
+		// ID is provided
+		Pet petById = owner.getPet(existingPet.getId());
+		assertThat(petById).isNotNull();
+		assertThat(petById).isEqualTo(existingPet);
+
+		// New negative assertion for getPet method using an invalid pet ID
+		assertThat(owner.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -157,23 +171,42 @@ class ClinicServiceTests {
 
 		int found = owner6.getPets().size();
 
-		Pet pet = new Pet();
-		pet.setName("bowser");
+		// Insert first pet
+		Pet pet1 = new Pet();
+		pet1.setName("bowser");
 		Collection<PetType> types = this.owners.findPetTypes();
-		pet.setType(EntityUtils.getById(types, PetType.class, 2));
-		pet.setBirthDate(LocalDate.now());
-		owner6.addPet(pet);
-		assertThat(owner6.getPets()).hasSize(found + 1);
+		pet1.setType(EntityUtils.getById(types, PetType.class, 2));
+		pet1.setBirthDate(LocalDate.now());
+		owner6.addPet(pet1);
+
+		// Insert second pet to verify multiple pets scenario and getPet overloads
+		Pet pet2 = new Pet();
+		pet2.setName("max");
+		pet2.setType(EntityUtils.getById(types, PetType.class, 2));
+		pet2.setBirthDate(LocalDate.now());
+		owner6.addPet(pet2);
+
+		assertThat(owner6.getPets()).hasSize(found + 2);
 
 		this.owners.save(owner6);
 
 		optionalOwner = this.owners.findById(6);
 		assertThat(optionalOwner).isPresent();
 		owner6 = optionalOwner.get();
-		assertThat(owner6.getPets()).hasSize(found + 1);
-		// checks that id has been generated
-		pet = owner6.getPet("bowser");
-		assertThat(pet.getId()).isNotNull();
+
+		// Retrieve pets by name and verify ids are generated
+		Pet insertedPet1 = owner6.getPet("bowser");
+		assertThat(insertedPet1.getId()).isNotNull();
+		Pet insertedPet2 = owner6.getPet("max");
+		assertThat(insertedPet2.getId()).isNotNull();
+
+		// Additional positive assertions for getPet using id overload
+		assertThat(owner6.getPet(insertedPet1.getId())).isEqualTo(insertedPet1);
+		assertThat(owner6.getPet(insertedPet2.getId())).isEqualTo(insertedPet2);
+
+		// New negative assertions for getPet method using both String and int overloads
+		assertThat(owner6.getPet("nonExistentPet")).isNull();
+		assertThat(owner6.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -195,6 +228,9 @@ class ClinicServiceTests {
 		owner6 = optionalOwner.get();
 		pet7 = owner6.getPet(7);
 		assertThat(pet7.getName()).isEqualTo(newName);
+
+		// New negative assertion for getPet method with an invalid pet ID
+		assertThat(owner6.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -223,9 +259,14 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Reload the owner from the repository to verify persistent state
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		// Fetch the pet again from the reloaded owner
+		pet7 = owner6.getPet(7);
+
+		assertThat(pet7.getVisits()).hasSize(found + 1).allMatch(v -> v.getId() != null);
 	}
 
 	@Test
@@ -237,11 +278,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
