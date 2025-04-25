@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -40,6 +41,8 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +50,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
@@ -248,6 +255,19 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added test to explicitly validate the behavior of Owner#getPet method
+	@Test
+	void testGetPetBehavior() {
+		Owner owner = george();
+		// When pet with the given name exists
+		Pet validPet = owner.getPet("Max");
+		assertThat("Expected getPet to return a non-null pet for 'Max'", validPet, is(notNullValue()));
+
+		// When pet with the given name does not exist
+		Pet invalidPet = owner.getPet("Buddy");
+		assertThat("Expected getPet to return null for a non-existent pet 'Buddy'", invalidPet, is(nullValue()));
 	}
 
 }
