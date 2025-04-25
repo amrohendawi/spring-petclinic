@@ -227,7 +227,20 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andExpect(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Explicit test cases for Owner.getPet to ensure correct behavior even if
+				// conditionals are negated
+				Pet pet = owner.getPet("Max");
+				if (pet == null || !"Max".equals(pet.getName())) {
+					throw new AssertionError("getPet did not return the pet with name 'Max'");
+				}
+				Pet nonExistentPet = owner.getPet("NonExistent");
+				if (nonExistentPet != null) {
+					throw new AssertionError("getPet should return null for a non-existent pet");
+				}
+			});
 	}
 
 	@Test
