@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -52,8 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for {@link OwnerController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(OwnerController.class)
 @DisabledInNativeImage
@@ -99,8 +100,8 @@ class OwnerControllerTests {
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(george));
 		Visit visit = new Visit();
 		visit.setDate(LocalDate.now());
+		// Adding a visit to the pet obtained via getPet (valid case)
 		george.getPet("Max").getVisits().add(visit);
-
 	}
 
 	@Test
@@ -248,6 +249,21 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added extra test to specifically verify the behavior of the getPet method in the
+	// Owner class
+	@Test
+	void testGetPet() {
+		Owner owner = george();
+		// Test the valid case where the pet exists
+		Pet validPet = owner.getPet("Max");
+		assertThat(validPet).isNotNull();
+		assertThat(validPet.getName()).isEqualTo("Max");
+
+		// Test the invalid case where the pet name does not match any pet
+		Pet invalidPet = owner.getPet("NonExistentPet");
+		assertThat(invalidPet).isNull();
 	}
 
 }
