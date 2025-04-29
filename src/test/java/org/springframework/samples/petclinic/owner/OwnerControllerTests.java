@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -248,6 +251,26 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added tests to directly verify the behavior of the getPet() method in the Owner
+	// class
+	@Test
+	void testGetPetExisting() {
+		Owner owner = george();
+		// Retrieve existing pet
+		Pet pet = owner.getPet("Max");
+		assertNotNull(pet, "getPet should return the existing pet named Max");
+		assertEquals("Max", pet.getName(), "The pet's name should be Max");
+	}
+
+	@Test
+	void testGetPetNonExisting() {
+		Owner owner = george();
+		// Attempt to retrieve a non-existing pet, expecting null (or behavior as
+		// designed)
+		Pet pet = owner.getPet("Buddy");
+		assertNull(pet, "getPet should return null when no pet with the given name exists");
 	}
 
 }
