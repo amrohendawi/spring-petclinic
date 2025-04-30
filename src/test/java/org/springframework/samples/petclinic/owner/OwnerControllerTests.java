@@ -17,6 +17,8 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.assertj.core.util.Lists;
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeMatcher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
@@ -227,6 +229,25 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
+			.andExpect(model().attribute("owner", new TypeSafeMatcher<Owner>() {
+				@Override
+				public void describeTo(Description description) {
+					description.appendText("Owner.getPet behavior check");
+				}
+
+				@Override
+				protected boolean matchesSafely(Owner owner) {
+					// Check that getPet returns the existing pet when matched
+					if (owner.getPet("Max") == null) {
+						return false;
+					}
+					// Check that getPet returns null when no pet is found
+					if (owner.getPet("NonExisting") != null) {
+						return false;
+					}
+					return true;
+				}
+			}))
 			.andExpect(view().name("owners/ownerDetails"));
 	}
 
