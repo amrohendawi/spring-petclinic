@@ -1,21 +1,6 @@
-/*
- * Copyright 2012-2019 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +18,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
@@ -51,6 +37,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for {@link OwnerController}
+ *
+ * Modified to add assertions validating the behavior of the getPet method on Owner. This
+ * ensures that both branches of the conditional in getPet are exercised: one where the
+ * pet is found, and one where it is not found (returns null).
+ *
+ * This modification kills the survived mutation by verifying the correct behavior when
+ * querying for an existing pet ("Max") and a non-existent pet ("NonExisting").
  *
  * @author Colin But
  * @author Wick Dynex
@@ -217,6 +210,13 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Additional assertions to validate the behavior of getPet
+		Owner owner = george();
+		// Verify that getPet returns the pet when a matching name is provided
+		assertThat(owner.getPet("Max")).isNotNull();
+		// Verify that getPet returns null when no matching pet is found
+		assertThat(owner.getPet("NonExisting")).isNull();
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
