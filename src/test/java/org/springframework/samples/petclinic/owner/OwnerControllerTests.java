@@ -40,6 +40,7 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -227,7 +228,13 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner", hasProperty("pets", not(empty()))))
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
-			.andExpect(view().name("owners/ownerDetails"));
+			.andExpect(view().name("owners/ownerDetails"))
+			.andDo(result -> {
+				Owner owner = (Owner) result.getModelAndView().getModel().get("owner");
+				// Verify the alternative branch of getPet: when pet name is not found, it
+				// should return null
+				assertNull(owner.getPet("NonExisting"));
+			});
 	}
 
 	@Test
