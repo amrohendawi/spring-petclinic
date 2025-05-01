@@ -32,6 +32,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,6 +71,10 @@ class PetControllerTests {
 		given(this.owners.findPetTypes()).willReturn(Lists.newArrayList(cat));
 
 		Owner owner = new Owner();
+		// Set owner attributes to ensure toString has expected content
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+
 		Pet pet = new Pet();
 		Pet dog = new Pet();
 		owner.addPet(pet);
@@ -77,6 +83,16 @@ class PetControllerTests {
 		dog.setId(TEST_PET_ID + 1);
 		pet.setName("petty");
 		dog.setName("doggy");
+
+		// Assert that toString() methods return non-empty values containing expected
+		// attributes
+		assertFalse(owner.toString().trim().isEmpty(), "Owner toString should not be empty");
+		assertTrue(owner.toString().contains("John"), "Owner toString should contain first name");
+		assertTrue(owner.toString().contains("Doe"), "Owner toString should contain last name");
+
+		assertFalse(pet.toString().trim().isEmpty(), "Pet toString should not be empty");
+		assertTrue(pet.toString().contains("petty"), "Pet toString should contain pet name");
+
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
 	}
 
