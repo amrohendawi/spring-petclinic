@@ -32,6 +32,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * Author: Colin But Author: Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -161,7 +162,17 @@ class PetControllerTests {
 			mockMvc.perform(get("/owners/{ownerId}/pets/{petId}/edit", TEST_OWNER_ID, TEST_PET_ID))
 				.andExpect(status().isOk())
 				.andExpect(model().attributeExists("pet"))
-				.andExpect(view().name("pets/createOrUpdatePetForm"));
+				.andExpect(view().name("pets/createOrUpdatePetForm"))
+				.andExpect(result -> {
+					Object petObj = result.getModelAndView().getModel().get("pet");
+					if (petObj == null) {
+						throw new AssertionError("The pet model attribute should not be null");
+					}
+					String petToString = petObj.toString();
+					assertFalse(petToString.isEmpty(), "toString() should not return an empty string");
+					Pet pet = (Pet) petObj;
+					assertTrue(petToString.contains(pet.getName()), "toString() should contain the pet's name");
+				});
 		}
 
 	}
