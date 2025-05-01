@@ -16,6 +16,7 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +43,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * This class has been modified to include an assertion on the toString method of
+ * NamedEntity (via the Owner class) in order to verify that it returns a meaningful,
+ * non-empty string representation. This ensures that any mutations affecting toString are
+ * detected.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +210,21 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added a dedicated check for NamedEntity.toString by using Owner (which extends
+	// NamedEntity).
+	// This test ensures that the toString method returns a non-empty, meaningful string
+	// that includes set properties.
+	@Test
+	void testNamedEntityToString() {
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String rep = owner.toString();
+		assertThat(rep).isNotEmpty();
+		assertThat(rep).contains("John");
+		assertThat(rep).contains("Doe");
 	}
 
 }
