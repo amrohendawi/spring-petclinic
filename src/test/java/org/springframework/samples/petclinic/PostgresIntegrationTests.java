@@ -18,6 +18,7 @@ package org.springframework.samples.petclinic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Arrays;
@@ -122,14 +123,16 @@ public class PostgresIntegrationTests {
 
 					assertNotNull(sourceProperty, "source property was expecting an object but is null.");
 
-					assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
+					String sourcePropertyString = sourceProperty.toString();
+					assertNotNull(sourcePropertyString, "source property toString() returned null.");
+					// New assertion to ensure toString() does not return an empty string
+					assertFalse(sourcePropertyString.isEmpty(), "source property toString() returned an empty string.");
 
-					String value = sourceProperty.toString();
-					if (resolved.equals(value)) {
+					if (resolved.equals(sourcePropertyString)) {
 						log.info(name + "=" + resolved);
 					}
 					else {
-						log.info(name + "=" + value + " OVERRIDDEN to " + resolved);
+						log.info(name + "=" + sourcePropertyString + " OVERRIDDEN to " + resolved);
 					}
 				}
 			}
@@ -138,8 +141,8 @@ public class PostgresIntegrationTests {
 		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
 			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
 			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
+				if (source instanceof EnumerablePropertySource) {
+					sources.add((EnumerablePropertySource<?>) source);
 				}
 			}
 			return sources;
