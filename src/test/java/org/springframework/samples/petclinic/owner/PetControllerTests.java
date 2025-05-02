@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +42,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Modified to include assertions for the toString() method of NamedEntity (a parent of
+ * Owner), ensuring that it returns a meaningful, non-empty string. This change helps
+ * detect mutations that cause toString() to return an empty string.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -86,6 +91,15 @@ class PetControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdatePetForm"))
 			.andExpect(model().attributeExists("pet"));
+
+		// Added assertion to verify that the toString method of NamedEntity (via Owner)
+		// returns a meaningful string
+		Owner testOwner = new Owner();
+		testOwner.setFirstName("John");
+		testOwner.setLastName("Doe");
+		String entityString = testOwner.toString();
+		assertThat(entityString).isNotEmpty();
+		assertThat(entityString).contains("John").contains("Doe");
 	}
 
 	@Test
