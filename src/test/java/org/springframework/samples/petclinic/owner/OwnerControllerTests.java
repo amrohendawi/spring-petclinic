@@ -217,6 +217,9 @@ class OwnerControllerTests {
 
 	@Test
 	void testShowOwner() throws Exception {
+		// Retrieve the owner instance for direct testing of getPet method behavior
+		Owner owner = george();
+
 		mockMvc.perform(get("/owners/{ownerId}", TEST_OWNER_ID))
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("owner", hasProperty("lastName", is("Franklin"))))
@@ -228,6 +231,12 @@ class OwnerControllerTests {
 			.andExpect(model().attribute("owner",
 					hasProperty("pets", hasItem(hasProperty("visits", hasSize(greaterThan(0)))))))
 			.andExpect(view().name("owners/ownerDetails"));
+
+		// Additional assertions to test the getPet method behavior
+		// Verify that getPet returns the pet when the name matches exactly
+		org.junit.jupiter.api.Assertions.assertNotNull(owner.getPet("Max"), "Expected getPet('Max') not to be null");
+		// Verify that getPet returns null when no pet with the given name is found
+		org.junit.jupiter.api.Assertions.assertNull(owner.getPet("Kitty"), "Expected getPet('Kitty') to be null");
 	}
 
 	@Test
