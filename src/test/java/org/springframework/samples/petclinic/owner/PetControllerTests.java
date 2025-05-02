@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -25,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.samples.petclinic.model.NamedEntity;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -41,6 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Test class for the {@link PetController}
+ *
+ * Modified to add tests ensuring the behavior of the toString method for NamedEntity and
+ * Owner, which help detect mutations returning an empty string.
+ *
+ * This ensures that the toString methods provide a descriptive representation including
+ * key fields.
  *
  * @author Colin But
  * @author Wick Dynex
@@ -203,6 +212,29 @@ class PetControllerTests {
 				.andExpect(view().name("pets/createOrUpdatePetForm"));
 		}
 
+	}
+
+	// Added tests for toString methods to catch mutations returning empty strings
+	@Test
+	void testNamedEntityToString() {
+		// Create an anonymous subclass of NamedEntity and set a name
+		NamedEntity entity = new NamedEntity() {
+		};
+		entity.setName("TestName");
+		String stringRepresentation = entity.toString();
+		assertThat(stringRepresentation).isNotEmpty();
+		assertThat(stringRepresentation).contains("TestName");
+	}
+
+	@Test
+	void testOwnerToString() {
+		// Create an Owner instance and set first name and last name
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String stringRepresentation = owner.toString();
+		assertThat(stringRepresentation).isNotEmpty();
+		assertThat(stringRepresentation).contains("John").contains("Doe");
 	}
 
 }
