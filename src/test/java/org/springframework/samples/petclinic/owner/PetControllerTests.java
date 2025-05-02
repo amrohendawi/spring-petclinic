@@ -16,6 +16,8 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import org.assertj.core.api.Assertions;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -42,8 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Test class for the {@link PetController}
  *
- * @author Colin But
- * @author Wick Dynex
+ * This modification adds assertions for the toString methods inherited from NamedEntity.
+ * This ensures that the toString() implementations return a non-empty string reflecting
+ * the state of the object, catching any mutation which might have returned an empty
+ * string.
+ *
+ * Authors: Colin But, Wick Dynex
  */
 @WebMvcTest(value = PetController.class,
 		includeFilters = @ComponentScan.Filter(value = PetTypeFormatter.class, type = FilterType.ASSIGNABLE_TYPE))
@@ -78,6 +84,11 @@ class PetControllerTests {
 		pet.setName("petty");
 		dog.setName("doggy");
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		// Added assertions to validate toString methods of NamedEntity implementations.
+		// This will catch mutations that cause toString() to return an empty string.
+		assertThat(owner.toString()).as("Owner toString should not be empty").isNotEmpty();
+		assertThat(pet.toString()).as("Pet toString should not be empty").isNotEmpty();
 	}
 
 	@Test
