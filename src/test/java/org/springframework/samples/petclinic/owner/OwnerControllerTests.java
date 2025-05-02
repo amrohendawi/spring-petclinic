@@ -40,6 +40,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +50,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Test class for {@link OwnerController}
@@ -248,6 +255,24 @@ class OwnerControllerTests {
 			.andExpect(status().is3xxRedirection())
 			.andExpect(redirectedUrl("/owners/" + pathOwnerId + "/edit"))
 			.andExpect(flash().attributeExists("error"));
+	}
+
+	// Added tests to directly validate the getPet(Integer) method behavior
+	@Test
+	void testGetPetByIdFound() {
+		Owner owner = george();
+		// Testing getPet(Integer) with an existing pet id
+		Pet pet = owner.getPet(1);
+		assertNotNull(pet, "Expected to find pet with ID 1");
+		assertEquals("Max", pet.getName(), "Expected pet name to be 'Max'");
+	}
+
+	@Test
+	void testGetPetByIdNotFound() {
+		Owner owner = george();
+		// Testing getPet(Integer) with a non-existing pet id
+		Pet pet = owner.getPet(2);
+		assertNull(pet, "Expected no pet with ID 2");
 	}
 
 }
