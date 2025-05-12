@@ -43,6 +43,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.model.NamedEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
@@ -73,8 +74,8 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
-			.listeners(new PropertiesLogger()) //
+			)
+			.listeners(new PropertiesLogger())
 			.run(args);
 	}
 
@@ -89,6 +90,26 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void testNamedEntityToString() {
+		// Create an instance of NamedEntity with known state. If NamedEntity is not
+		// instantiable directly,
+		// an anonymous subclass is used.
+		NamedEntity entity = new NamedEntity();
+		entity.setId(1);
+		entity.setName("TestName");
+		String entityString = entity.toString();
+
+		// Validate that the toString output contains the fully qualified class name, the
+		// id and the name
+		// using a regex pattern that matches the expected format:
+		// For example:
+		// "org.springframework.samples.petclinic.model.NamedEntity@<hashcode> [id=1,
+		// name=TestName]"
+		assertThat(entityString).matches(
+				"org\\.springframework\\.samples\\.petclinic\\.model\\.NamedEntity@[a-f0-9]+ \\[id=1, name=TestName\\]");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
