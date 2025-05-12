@@ -43,6 +43,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.model.NamedEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
@@ -73,7 +74,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +90,15 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+		// Added dedicated assertions for NamedEntity.toString() to verify its output
+		// format.
+		// Creating an anonymous subclass in case NamedEntity is abstract.
+		NamedEntity namedEntity = new NamedEntity() {
+		};
+		namedEntity.setName("Fido");
+		// Expecting the toString() to return the name value
+		assertThat(namedEntity.toString()).isEqualTo("Fido");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
