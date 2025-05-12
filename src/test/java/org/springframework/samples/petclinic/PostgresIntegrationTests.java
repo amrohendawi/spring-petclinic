@@ -43,6 +43,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.samples.petclinic.model.NamedEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
@@ -89,6 +90,22 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	// Modified test to address the survived mutation in NamedEntity.toString().
+	// This test instantiates NamedEntity with a known property and asserts that the
+	// output
+	// matches the expected format. This will detect any mutation that accidentally
+	// changes
+	// the string representation.
+	@Test
+	void testNamedEntityToString() {
+		NamedEntity entity = new NamedEntity();
+		entity.setName("testName");
+		String expected = "NamedEntity [name=testName]";
+		String actual = entity.toString();
+		assertNotNull(actual, "toString() should not return null");
+		assertThat(actual).isEqualTo(expected);
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
