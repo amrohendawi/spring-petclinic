@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2019 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -219,13 +203,36 @@ class ClinicServiceTests {
 		int found = pet7.getVisits().size();
 		Visit visit = new Visit();
 		visit.setDescription("test");
-
+		visit.setDate(LocalDate.now());
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Reload the owner and verify valid visit was added with correct details
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		pet7 = owner6.getPet(7);
+		assertThat(pet7.getVisits()).hasSize(found + 1)
+			.anyMatch(v -> "test".equals(v.getDescription()) && v.getDate() != null && v.getId() != null);
+
+		// Additional test for edge case: try to add a visit with an invalid pet id and
+		// verify that it is not added
+		int totalVisitsBeforeInvalid = owner6.getPets().stream().mapToInt(p -> p.getVisits().size()).sum();
+		Visit invalidVisit = new Visit();
+		invalidVisit.setDescription("invalid test");
+		invalidVisit.setDate(LocalDate.now());
+		boolean exceptionThrown = false;
+		try {
+			owner6.addVisit(999, invalidVisit);
+			this.owners.save(owner6);
+		}
+		catch (IllegalArgumentException ex) {
+			exceptionThrown = true;
+		}
+		int totalVisitsAfterInvalid = owner6.getPets().stream().mapToInt(p -> p.getVisits().size()).sum();
+		if (!exceptionThrown) {
+			assertThat(totalVisitsAfterInvalid).isEqualTo(totalVisitsBeforeInvalid);
+		}
 	}
 
 	@Test
@@ -237,11 +244,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
