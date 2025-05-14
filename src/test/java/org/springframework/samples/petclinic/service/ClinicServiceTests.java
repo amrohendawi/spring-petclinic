@@ -50,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +98,10 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+
+		// Added negative assertions for non-existent pet retrieval
+		assertThat(owner.getPet("nonexistent")).isNull();
+		assertThat(owner.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -195,6 +199,9 @@ class ClinicServiceTests {
 		owner6 = optionalOwner.get();
 		pet7 = owner6.getPet(7);
 		assertThat(pet7.getName()).isEqualTo(newName);
+
+		// Added negative assertion for non-existent pet id
+		assertThat(owner6.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -223,9 +230,17 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		assertThat(pet7.getVisits()).hasSize(found + 1).allMatch(value -> value.getId() != null);
+
+		// Added negative test: attempt to add a visit for a non-existent pet id
+		// Sum total visits for all pets before adding invalid visit
+		int totalVisitsBefore = owner6.getPets().stream().mapToInt(p -> p.getVisits().size()).sum();
+		Visit invalidVisit = new Visit();
+		invalidVisit.setDescription("non-existent visit");
+		owner6.addVisit(-1, invalidVisit);
+		// Sum total visits for all pets after attempting to add visit to invalid pet id
+		int totalVisitsAfter = owner6.getPets().stream().mapToInt(p -> p.getVisits().size()).sum();
+		assertThat(totalVisitsAfter).isEqualTo(totalVisitsBefore);
 	}
 
 	@Test
@@ -237,11 +252,11 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
+
+		// Added negative assertion: retrieving a visit for a non-existent pet id should
+		// return null
+		assertThat(owner6.getPet(99999)).isNull();
 	}
 
 }
