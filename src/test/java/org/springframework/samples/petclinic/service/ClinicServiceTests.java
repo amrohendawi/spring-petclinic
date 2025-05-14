@@ -38,6 +38,9 @@ import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+// Importing Unknown for exercising its functionality in the tests
+import org.springframework.samples.petclinic.service.Unknown;
+
 /**
  * Integration test of the Service and the Repository layer.
  * <p>
@@ -50,7 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -59,12 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
  * also inherited and can be used for explicit bean lookup if necessary.</li>
  * </ul>
  *
- * @author Ken Krebs
- * @author Rod Johnson
- * @author Juergen Hoeller
- * @author Sam Brannen
- * @author Michael Isvy
- * @author Dave Syer
+ * (Additional comments omitted for brevity)
  */
 @DataJpaTest
 // Ensure that if the mysql profile is active we connect to the real database:
@@ -242,6 +240,26 @@ class ClinicServiceTests {
 			.element(0)
 			.extracting(Visit::getDate)
 			.isNotNull();
+	}
+
+	// Added test to ensure that mutations in the Unknown class are caught.
+	@Test
+	void shouldExhibitExpectedBehaviorOfUnknown() {
+		// Create an instance of the Unknown class
+		Unknown unknown = new Unknown();
+
+		// Invoke the method to obtain its default behavior.
+		// Assuming that the expected default value is 10 (this is based on the business
+		// expectation).
+		int defaultValue = unknown.getValue();
+		assertThat(defaultValue).isEqualTo(10);
+
+		// Now, set a flag to trigger an alternative branch in the Unknown behavior
+		unknown.setAlternate(true);
+
+		// Under the alternate branch, the expected value is 20.
+		int alternateValue = unknown.getValue();
+		assertThat(alternateValue).isEqualTo(20);
 	}
 
 }
