@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -217,15 +218,25 @@ class ClinicServiceTests {
 
 		Pet pet7 = owner6.getPet(7);
 		int found = pet7.getVisits().size();
+
 		Visit visit = new Visit();
 		visit.setDescription("test");
 
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Re-fetch the owner to ensure we are reading the latest data from the database
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		Pet pet7Reloaded = owner6.getPet(7);
+
+		// Verify that the visit count increased and all visits have a non-null id
+		assertThat(pet7Reloaded.getVisits()).hasSize(found + 1).allMatch(value -> value.getId() != null);
+
+		// Verify that the newly added visit has the correct description and association
+		boolean newVisitFound = pet7Reloaded.getVisits().stream().anyMatch(v -> "test".equals(v.getDescription()));
+		assertThat(newVisitFound).isTrue();
 	}
 
 	@Test
@@ -237,11 +248,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
