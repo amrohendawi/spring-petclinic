@@ -38,6 +38,9 @@ import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+// Importing Unknown class to test its functionality explicitly
+import org.springframework.samples.petclinic.service.Unknown;
+
 /**
  * Integration test of the Service and the Repository layer.
  * <p>
@@ -50,7 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -242,6 +245,16 @@ class ClinicServiceTests {
 			.element(0)
 			.extracting(Visit::getDate)
 			.isNotNull();
+	}
+
+	// Added test to target the previously untested Unknown class to kill surviving mutations
+	@Test
+	void shouldComputeSquareCorrectly() {
+		Unknown unknown = new Unknown();
+		// Verifying the square method against a range of inputs including boundary cases
+		assertThat(unknown.square(4)).isEqualTo(16);
+		assertThat(unknown.square(0)).isEqualTo(0);
+		assertThat(unknown.square(-3)).isEqualTo(9);
 	}
 
 }
