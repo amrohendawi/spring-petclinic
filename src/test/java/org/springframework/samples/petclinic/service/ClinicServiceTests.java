@@ -17,6 +17,7 @@
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -50,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -223,8 +224,8 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
+		assertThat(pet7.getVisits())
+			.hasSize(found + 1)
 			.allMatch(value -> value.getId() != null);
 	}
 
@@ -237,11 +238,25 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
+		assertThat(visits)
+			.hasSize(2)
 			.element(0)
 			.extracting(Visit::getDate)
 			.isNotNull();
+	}
+
+	@Test
+	void shouldHandleAddingVisitForNonexistentPet() {
+		Optional<Owner> optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		Owner owner6 = optionalOwner.get();
+
+		Visit visit = new Visit();
+		visit.setDescription("invalid pet id test");
+
+		// Using a pet id that does not exist for owner6. We expect an IllegalArgumentException to be thrown.
+		assertThatThrownBy(() -> owner6.addVisit(999, visit))
+			.isInstanceOf(IllegalArgumentException.class);
 	}
 
 }
