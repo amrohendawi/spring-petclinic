@@ -1,19 +1,3 @@
-/*
- * Copyright 2012-2019 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.springframework.samples.petclinic.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Dependency Injection</strong> of test fixture instances, meaning that we
  * don't need to perform application context lookups. See the use of
  * {@link Autowired @Autowired} on the <code> </code> instance variable, which uses
- * autowiring <em>by type</em>.
+ * autowiring <em>by type</em>.</li>
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
@@ -98,6 +82,10 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+
+		// Additional assertion: when requesting a pet with an invalid id, it should
+		// return null
+		assertThat(owner.getPet(9999)).isNull();
 	}
 
 	@Test
@@ -223,9 +211,22 @@ class ClinicServiceTests {
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Reload owner and pet from repository to verify associations
+		Optional<Owner> reloadedOwnerOpt = this.owners.findById(6);
+		assertThat(reloadedOwnerOpt).isPresent();
+		Owner reloadedOwner = reloadedOwnerOpt.get();
+		Pet reloadedPet = reloadedOwner.getPet(pet7.getId());
+		assertThat(reloadedPet.getVisits()).hasSize(found + 1);
+
+		// Find the newly added visit by description
+		Optional<Visit> optionalVisit = reloadedPet.getVisits()
+			.stream()
+			.filter(v -> "test".equals(v.getDescription()))
+			.findFirst();
+		assertThat(optionalVisit).isPresent();
+		Visit addedVisit = optionalVisit.get();
+		// Additional assertion: the visit should be associated with the correct pet
+		assertThat(addedVisit.getPet()).isEqualTo(reloadedPet);
 	}
 
 	@Test
@@ -237,11 +238,10 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
+		// Additional assertion: each visit should be associated with the correct pet
+		// instance
+		visits.forEach(visit -> assertThat(visit.getPet()).isEqualTo(pet7));
 	}
 
 }
