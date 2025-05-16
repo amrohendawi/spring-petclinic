@@ -219,13 +219,23 @@ class ClinicServiceTests {
 		int found = pet7.getVisits().size();
 		Visit visit = new Visit();
 		visit.setDescription("test");
-
 		owner6.addVisit(pet7.getId(), visit);
 		this.owners.save(owner6);
 
-		assertThat(pet7.getVisits()) //
-			.hasSize(found + 1) //
-			.allMatch(value -> value.getId() != null);
+		// Re-load the owner to get updated pet and visit details from the database
+		optionalOwner = this.owners.findById(6);
+		assertThat(optionalOwner).isPresent();
+		owner6 = optionalOwner.get();
+		pet7 = owner6.getPet(7);
+		assertThat(pet7.getVisits()).hasSize(found + 1);
+
+		// Verify that the newly added visit has the expected details
+		Optional<Visit> newVisit = pet7.getVisits().stream().filter(v -> "test".equals(v.getDescription())).findFirst();
+		assertThat(newVisit).isPresent();
+		Visit persistedVisit = newVisit.get();
+		assertThat(persistedVisit.getId()).isNotNull();
+		assertThat(persistedVisit.getDescription()).isEqualTo("test");
+		assertThat(persistedVisit.getDate()).isNotNull();
 	}
 
 	@Test
@@ -237,11 +247,7 @@ class ClinicServiceTests {
 		Pet pet7 = owner6.getPet(7);
 		Collection<Visit> visits = pet7.getVisits();
 
-		assertThat(visits) //
-			.hasSize(2) //
-			.element(0)
-			.extracting(Visit::getDate)
-			.isNotNull();
+		assertThat(visits).hasSize(2).element(0).extracting(Visit::getDate).isNotNull();
 	}
 
 }
