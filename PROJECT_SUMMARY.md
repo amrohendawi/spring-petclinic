@@ -2,7 +2,7 @@
 
 ## Overview
 
-Spring PetClinic is a comprehensive sample application demonstrating Spring Boot best practices for building modern web applications. It showcases a complete veterinary clinic management system with owner, pet, and veterinarian management capabilities, including recent UI/UX enhancements for improved user workflows.
+Spring PetClinic is a comprehensive sample application demonstrating Spring Boot best practices for building modern web applications. It showcases a complete veterinary clinic management system with owner, pet, and veterinarian management capabilities, including recent UI/UX enhancements for improved user workflows and fully synchronized internationalization support across all supported languages.
 
 **Technology Stack:**
 - **Framework:** Spring Boot 3.4.2
@@ -13,6 +13,7 @@ Spring PetClinic is a comprehensive sample application demonstrating Spring Boot
 - **Testing:** JUnit 5, Testcontainers, MockMvc
 - **Caching:** JCache (JSR-107)
 - **Containerization:** Docker, Kubernetes
+- **Internationalization:** 9 languages with synchronized message bundles
 
 ## System Context (C4 - Level 1)
 
@@ -298,10 +299,12 @@ Multi-database support with profiles:
 - **Error Handling:** Comprehensive form validation with user-friendly messages
 
 ### 7. **Internationalization (i18n)**
-Support for 8 languages with complete message bundles:
+Support for 9 languages with complete message bundles and synchronized translation keys:
 - English (default), German, Spanish, Persian, Korean, Portuguese, Russian, Turkish
 - **Configuration:** WebConfiguration with LocaleChangeInterceptor
 - **Message Keys:** Comprehensive coverage for all UI elements
+- **Synchronization:** All language files contain identical translation keys (verified by `I18nPropertiesSyncTest`)
+- **Recent Updates:** All translation files synchronized to match base `messages.properties` structure
 
 ### 8. **Caching Strategy**
 - **Technology:** JCache (JSR-107) with Spring Cache abstraction
@@ -329,7 +332,8 @@ Support for 8 languages with complete message bundles:
 #### Test Coverage
 - Controller layer: Form handling, validation, error scenarios
 - Repository layer: Custom queries, data persistence
-- Internationalization: Message resolution for all locales
+- Internationalization: Message resolution for all locales with synchronized key validation
+- **I18n Synchronization Test:** `I18nPropertiesSyncTest` ensures all translation files maintain identical key structures
 
 ## API Endpoints
 
@@ -411,10 +415,12 @@ GET    /oups         # Error demonstration
 - SCSS-based custom styling
 
 ### 7. **Multilingual Support**
-- 8 language translations
+- 9 language translations with synchronized message keys
 - Locale-based message resolution
 - URL-based locale switching
 - Complete UI translation coverage
+- **I18n Test Coverage:** Automated validation ensuring all translation files contain identical keys
+- **Recently Synchronized:** All language-specific property files updated to match base messages
 
 ### 8. **Performance Optimization**
 - JCache implementation for vet data
@@ -428,6 +434,13 @@ GET    /oups         # Error demonstration
 - Spring-themed visual design with consistent styling
 - Internationalization support for button text and tooltips
 - Improved workflow reducing navigation steps for common tasks
+
+### 10. **Internationalization Synchronization**
+- Complete synchronization of message bundles for all supported languages
+- Consistent terminology and phrasing across the application
+- Regular updates and maintenance of translation files
+- Community contributions for translation improvements
+- Comprehensive testing of internationalization features
 
 ## Build and Deployment
 
