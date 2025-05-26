@@ -20,9 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -39,6 +43,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
@@ -46,6 +51,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.mock.env.MockEnvironment;
 import org.testcontainers.DockerClientFactory;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = { "spring.docker.compose.skip.in-tests=false", //
@@ -73,7 +79,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -91,9 +97,156 @@ public class PostgresIntegrationTests {
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
+	/*
+	 * Added test to validate the behavior of PropertiesLogger.printProperties method by
+	 * setting up a controlled environment with known property sources and capturing the
+	 * log messages via a custom Log implementation. This ensures that any mutation
+	 * affecting the property value comparison or logging behavior will be caught.
+	 */
+	@Test
+	void testPropertiesLogger() throws Exception {
+		// Create a custom Log implementation to capture log messages
+		class CapturingLog implements Log {
+
+			List<String> messages = new ArrayList<>();
+
+			@Override
+			public void debug(Object message) {
+				// no-op
+			}
+
+			@Override
+			public void debug(Object message, Throwable t) {
+				// no-op
+			}
+
+			@Override
+			public void error(Object message) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void error(Object message, Throwable t) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void fatal(Object message) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void fatal(Object message, Throwable t) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void info(Object message) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void info(Object message, Throwable t) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public boolean isDebugEnabled() {
+				return true;
+			}
+
+			@Override
+			public boolean isErrorEnabled() {
+				return true;
+			}
+
+			@Override
+			public boolean isFatalEnabled() {
+				return true;
+			}
+
+			@Override
+			public boolean isInfoEnabled() {
+				return true;
+			}
+
+			@Override
+			public boolean isTraceEnabled() {
+				return true;
+			}
+
+			@Override
+			public boolean isWarnEnabled() {
+				return true;
+			}
+
+			@Override
+			public void trace(Object message) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void trace(Object message, Throwable t) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void warn(Object message) {
+				messages.add(message.toString());
+			}
+
+			@Override
+			public void warn(Object message, Throwable t) {
+				messages.add(message.toString());
+			}
+
+		}
+
+		CapturingLog capturingLog = new CapturingLog();
+
+		// Use reflection to override the static final log in PropertiesLogger
+		Field logField = PropertiesLogger.class.getDeclaredField("log");
+		logField.setAccessible(true);
+		Field modifiersField = Field.class.getDeclaredField("modifiers");
+		modifiersField.setAccessible(true);
+		modifiersField.setInt(logField, logField.getModifiers() & ~Modifier.FINAL);
+		// Backup old log if needed (not used further in this test)
+		Log originalLog = (Log) logField.get(null);
+		logField.set(null, capturingLog);
+
+		// Setup a controlled environment using MockEnvironment
+		MockEnvironment env = new MockEnvironment();
+		// Add an overriding property source that will supply the resolved value
+		env.getPropertySources().addFirst(new MapPropertySource("override", Map.of("test.key", "overridden")));
+		// Add a default property source that will provide a different value
+		env.getPropertySources().addLast(new MapPropertySource("default", Map.of("test.key", "default")));
+
+		// Instantiate PropertiesLogger and set its environment
+		PropertiesLogger logger = new PropertiesLogger();
+		// Directly set the environment field (accessible from outer class)
+		logger.environment = env;
+
+		// Call the method to print properties which will use our capturingLog
+		logger.printProperties();
+
+		// Now, verify that the captured log messages include expected output
+		// We expect that for the "override" property source, the property value matches
+		// and for the "default" property source, it is overridden.
+		boolean foundOverride = capturingLog.messages.stream()
+			.anyMatch(msg -> msg.contains("test.key=overridden") && !msg.contains("OVERRIDDEN"));
+		boolean foundDefault = capturingLog.messages.stream()
+			.anyMatch(msg -> msg.contains("test.key=default OVERRIDDEN to overridden"));
+
+		assertThat(foundOverride).as("Expected log message for matching property in override source").isTrue();
+		assertThat(foundDefault).as("Expected log message for overridden property in default source").isTrue();
+
+		// Restore the original log (optional cleanup)
+		logField.set(null, originalLog);
+	}
+
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
 
-		private static final Log log = LogFactory.getLog(PropertiesLogger.class);
+		private static Log log = LogFactory.getLog(PropertiesLogger.class);
 
 		private ConfigurableEnvironment environment;
 
