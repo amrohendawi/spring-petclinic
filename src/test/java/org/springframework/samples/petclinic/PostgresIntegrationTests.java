@@ -36,10 +36,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.PropertySource;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +75,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -91,6 +93,224 @@ public class PostgresIntegrationTests {
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
+	@Test
+	void testPrintProperties() {
+		// Create a controlled StandardEnvironment
+		StandardEnvironment env = new StandardEnvironment();
+		env.getPropertySources().clear();
+
+		// Add a high precedence property source so that for key "overrideKey", the
+		// environment returns "overridden"
+		env.getPropertySources().addFirst(new EnumerablePropertySource<Object>("overridden") {
+			@Override
+			public Object getProperty(String name) {
+				if ("overrideKey".equals(name)) {
+					return "overridden";
+				}
+				return null;
+			}
+
+			@Override
+			public String[] getPropertyNames() {
+				return new String[] { "overrideKey" };
+			}
+		});
+
+		// Add property source with matching value
+		env.getPropertySources().addLast(new EnumerablePropertySource<Object>("matchPS") {
+			@Override
+			public Object getProperty(String name) {
+				if ("matchKey".equals(name)) {
+					return "value1";
+				}
+				return null;
+			}
+
+			@Override
+			public String[] getPropertyNames() {
+				return new String[] { "matchKey" };
+			}
+		});
+
+		// Add property source that will be overridden by the high precedence source
+		env.getPropertySources().addLast(new EnumerablePropertySource<Object>("overridePS") {
+			@Override
+			public Object getProperty(String name) {
+				if ("overrideKey".equals(name)) {
+					return "original";
+				}
+				return null;
+			}
+
+			@Override
+			public String[] getPropertyNames() {
+				return new String[] { "overrideKey" };
+			}
+		});
+
+		// Create a dummy ApplicationContext to supply our custom environment
+		ApplicationContext dummyContext = new ApplicationContext() {
+			@Override
+			public String getId() {
+				return "dummy";
+			}
+
+			@Override
+			public String getApplicationName() {
+				return "dummy";
+			}
+
+			@Override
+			public String getDisplayName() {
+				return "dummy";
+			}
+
+			@Override
+			public long getStartupDate() {
+				return 0;
+			}
+
+			@Override
+			public ApplicationContext getParent() {
+				return null;
+			}
+
+			@Override
+			public org.springframework.beans.factory.ListableBeanFactory getBeanFactory() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public boolean containsBeanDefinition(String beanName) {
+				return false;
+			}
+
+			@Override
+			public int getBeanDefinitionCount() {
+				return 0;
+			}
+
+			@Override
+			public String[] getBeanDefinitionNames() {
+				return new String[0];
+			}
+
+			@Override
+			public String[] getBeanNamesForType(Class<?> type) {
+				return new String[0];
+			}
+
+			@Override
+			public String[] getBeanNamesForType(Class<?> type, boolean includeNonSingletons, boolean allowEagerInit) {
+				return new String[0];
+			}
+
+			@Override
+			public <T> java.util.Map<String, T> getBeansOfType(Class<T> type) {
+				return java.util.Collections.emptyMap();
+			}
+
+			@Override
+			public <T> java.util.Map<String, T> getBeansOfType(Class<T> type, boolean includeNonSingletons,
+					boolean allowEagerInit) {
+				return java.util.Collections.emptyMap();
+			}
+
+			@Override
+			public String[] getBeanNamesForAnnotation(Class annotationType) {
+				return new String[0];
+			}
+
+			@Override
+			public java.util.Map<String, Object> getBeansWithAnnotation(Class annotationType) {
+				return java.util.Collections.emptyMap();
+			}
+
+			@Override
+			public <A extends java.lang.annotation.Annotation> A findAnnotationOnBean(String beanName,
+					Class<A> annotationType) {
+				return null;
+			}
+
+			@Override
+			public Object getBean(String name) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public <T> T getBean(String name, Class<T> requiredType) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public Object getBean(String name, Object... args) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public <T> T getBean(Class<T> requiredType) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public <T> T getBean(Class<T> requiredType, Object... args) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public boolean containsBean(String name) {
+				return false;
+			}
+
+			@Override
+			public boolean isSingleton(String name) {
+				return false;
+			}
+
+			@Override
+			public boolean isPrototype(String name) {
+				return false;
+			}
+
+			@Override
+			public boolean isTypeMatch(String name, Class<?> targetType) {
+				return false;
+			}
+
+			@Override
+			public Class<?> getType(String name) {
+				return null;
+			}
+
+			@Override
+			public org.springframework.beans.factory.config.AutowireCapableBeanFactory getAutowireCapableBeanFactory() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public <T> T getBeanProvider(Class<T> requiredType) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public <T> T getBeanProvider(Class<T> requiredType, boolean allowEagerInit) {
+				throw new UnsupportedOperationException();
+			}
+		};
+
+		// Instantiate the PropertiesLogger and inject our custom environment
+		PropertiesLogger logger = new PropertiesLogger();
+		logger.setEnvironment(env);
+		// Simulate the logger being initialized via an ApplicationPreparedEvent
+		ApplicationPreparedEvent event = new ApplicationPreparedEvent(dummyContext, new String[0]);
+		logger.onApplicationEvent(event);
+
+		// Now call printProperties() to execute both branches:
+		// One property with matching values (matchKey) and one with overridden values
+		// (overrideKey)
+		logger.printProperties();
+	}
+
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
 
 		private static final Log log = LogFactory.getLog(PropertiesLogger.class);
@@ -102,7 +322,8 @@ public class PostgresIntegrationTests {
 		@Override
 		public void onApplicationEvent(ApplicationPreparedEvent event) {
 			if (isFirstRun) {
-				environment = event.getApplicationContext().getEnvironment();
+				// Set the environment from the event
+				this.environment = event.getApplicationContext().getEnvironment();
 				printProperties();
 			}
 			isFirstRun = false;
@@ -143,6 +364,11 @@ public class PostgresIntegrationTests {
 				}
 			}
 			return sources;
+		}
+
+		// Added setter to enable injecting a controlled environment during tests
+		public void setEnvironment(ConfigurableEnvironment environment) {
+			this.environment = environment;
 		}
 
 	}
