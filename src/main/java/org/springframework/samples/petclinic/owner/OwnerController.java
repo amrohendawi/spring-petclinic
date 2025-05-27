@@ -47,7 +47,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 class OwnerController {
 
 	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
-
+	private static final String FLASH_ERROR = "error";
 	private final OwnerRepository owners;
 
 	public OwnerController(OwnerRepository owners) {
