@@ -75,7 +75,7 @@ class OwnerController {
 	@PostMapping("/owners/new")
 	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in creating the owner.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "There was an error in creating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
@@ -140,8 +140,7 @@ class OwnerController {
 		// If city is provided and not empty, search by both lastname and city
 		if (city != null && !city.trim().isEmpty()) {
 			return owners.findByLastNameStartingWithAndCityStartingWith(lastname, city, pageable);
-		}
-		else {
+		} else {
 			// Otherwise, search by lastname only (existing behavior)
 			return owners.findByLastNameStartingWith(lastname, pageable);
 		}
@@ -156,13 +155,13 @@ class OwnerController {
 	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
 			RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "There was an error in updating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
 		if (owner.getId() != ownerId) {
 			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
-			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "Owner ID mismatch. Please try again.");
 			return "redirect:/owners/{ownerId}/edit";
 		}
 
