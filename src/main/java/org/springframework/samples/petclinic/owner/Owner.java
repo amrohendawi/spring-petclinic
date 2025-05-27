@@ -166,7 +166,7 @@ public class Owner extends Person {
 		Assert.notNull(visit, "Visit must not be null!");
 
 		Pet pet = getPet(petId);
-		
+
 		Assert.notNull(pet, "Invalid Pet identifier!");
 		pet.addVisit(visit);
 	}
