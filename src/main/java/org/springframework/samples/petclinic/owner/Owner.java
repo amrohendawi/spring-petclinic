@@ -115,12 +115,6 @@ public class Owner extends Person {
 	 */
 	public Pet getPet(Integer id) {
 		for (Pet pet : getPets()) {
-			if (!pet.isNew()) {
-				Integer compId = pet.getId();
-				if (compId.equals(id)) {
-					return pet;
-				}
-			}
 		}
 		return null;
 	}
