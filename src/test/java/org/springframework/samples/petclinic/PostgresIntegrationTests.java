@@ -151,10 +151,7 @@ public class PostgresIntegrationTests {
 
 		// Instantiate our custom logger
 		TestPropertiesLogger logger = new TestPropertiesLogger();
-		// Use reflection to set the private 'environment' field of PropertiesLogger
-		java.lang.reflect.Field envField = PropertiesLogger.class.getDeclaredField("environment");
-		envField.setAccessible(true);
-		envField.set(logger, env);
+		logger.setEnvironment(env);
 
 		// Call the method under test
 		logger.printProperties();
