@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.owner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.core.style.ToStringCreator;
 import org.springframework.samples.petclinic.model.Person;
@@ -115,6 +116,9 @@ public class Owner extends Person {
 	 */
 	public Pet getPet(Integer id) {
 		for (Pet pet : getPets()) {
+			if (Objects.equals(pet.getId(), id)) {
+				return pet;
+			}
 		}
 		return null;
 	}

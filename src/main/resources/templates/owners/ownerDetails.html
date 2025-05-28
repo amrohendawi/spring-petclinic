@@ -3,7 +3,7 @@
 <html xmlns:th="https://www.thymeleaf.org"
   th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
 <head>
-  <title>Your Page Title Here</title>
+  <title th:text="#{ownerDetails}">Owner Details</title>
 </head>
 <body>
   
@@ -44,12 +44,13 @@
       Owner</a>
     <a th:href="@{__${owner.id}__/pets/new}" class="btn btn-primary" th:text="#{addNewPet}">Add
       New Pet</a>
-  
     <br />
     <br />
     <br />
     <h2 th:text="#{petsAndVisits}">Pets and Visits</h2>
   
+    <table class="table table-striped" th:each="pet : ${owner.pets}">
+      <tr>
         <td valign="top">
           <dl class="dl-horizontal">
             <dt th:text="#{name}">Name</dt>
@@ -78,8 +79,7 @@
               <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" th:text="#{addVisit}">Add Visit</a></td>
             </tr>
             <tr>
-              <td colspan="2" style="text-align: center; padding-top: 10px;">
-                <a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" 
+              <td colspan="2" style="text-align: center; padding-top: 10px;">                <a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" 
                    class="btn btn-primary btn-sm" 
                    style="background-color: #6db33f; border-color: #5fa134;"
                    th:title="#{scheduleVisitTooltip}">
@@ -90,7 +90,6 @@
           </table>
         </td>
       </tr>
-  
     </table>
     <script>
     // Function to hide the success and error messages after 3 seconds
