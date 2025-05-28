@@ -58,6 +58,8 @@ public class Pet extends NamedEntity {
 	@OrderBy("date ASC")
 	private final Set<Visit> visits = new LinkedHashSet<>();
 
+	private boolean isNewPet = false;
+
 	public void setBirthDate(LocalDate birthDate) {
 		this.birthDate = birthDate;
 	}
@@ -80,6 +82,14 @@ public class Pet extends NamedEntity {
 
 	public void addVisit(Visit visit) {
 		getVisits().add(visit);
+	}
+
+	public boolean isNewPet() {
+		return isNewPet;
+	}
+
+	public void setNewPet(boolean isNewPet) {
+		this.isNewPet = isNewPet;
 	}
 
 }
