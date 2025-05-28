@@ -88,8 +88,8 @@ class ClinicServiceTests {
 	@Transactional
 	void shouldInsertOwner() {
 		final String SCHULTZ = "Schultz";
-		Page<Owner> owners = this.owners.findByLastNameStartingWith(SCHULTZ, pageable);
-		int found = (int) owners.getTotalElements();
+		Page<Owner> ownersPage = this.owners.findByLastNameStartingWith(SCHULTZ, pageable);
+		int found = (int) ownersPage.getTotalElements();
 
 		Owner owner = new Owner();
 		owner.setFirstName("Sam");
@@ -100,8 +100,8 @@ class ClinicServiceTests {
 		this.owners.save(owner);
 		assertThat(owner.getId()).isNotZero();
 
-		owners = this.owners.findByLastNameStartingWith(SCHULTZ, pageable);
-		assertThat(owners.getTotalElements()).isEqualTo(found + 1);
+		ownersPage = this.owners.findByLastNameStartingWith(SCHULTZ, pageable);
+		assertThat(ownersPage.getTotalElements()).isEqualTo(found + 1);
 	}
 
 	@Test
