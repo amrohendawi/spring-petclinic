@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,9 +39,12 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -73,7 +78,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +94,26 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	// Added test to directly validate PropertiesLogger behavior and kill survived
+	// mutations
+	@Test
+	void testPropertiesLoggerShouldNotThrowAssertion() {
+		StandardEnvironment env = new StandardEnvironment();
+		Map<String, Object> properties = new HashMap<>();
+		properties.put("dummy.property", "dummy.value");
+		MapPropertySource testSource = new MapPropertySource("testSource", properties);
+		env.getPropertySources().addFirst(testSource);
+
+		GenericApplicationContext context = new GenericApplicationContext();
+		context.setEnvironment(env);
+		context.refresh();
+
+		ApplicationPreparedEvent event = new ApplicationPreparedEvent(context, new String[] {});
+		PropertiesLogger logger = new PropertiesLogger();
+		logger.onApplicationEvent(event);
+		logger.printProperties();
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {

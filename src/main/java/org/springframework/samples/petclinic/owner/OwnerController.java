@@ -48,6 +48,8 @@ class OwnerController {
 
 	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
 
+	private static final String FLASH_ERROR = "error";
+
 	private final OwnerRepository owners;
 
 	public OwnerController(OwnerRepository owners) {
@@ -75,7 +77,7 @@ class OwnerController {
 	@PostMapping("/owners/new")
 	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in creating the owner.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "There was an error in creating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
@@ -96,9 +98,12 @@ class OwnerController {
 		if (owner.getLastName() == null) {
 			owner.setLastName(""); // empty string signifies broadest possible search
 		}
+		if (owner.getCity() == null) {
+			owner.setCity(""); // empty string signifies broadest possible search
+		}
 
-		// find owners by last name
-		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, owner.getLastName());
+		// find owners by last name and optionally by city
+		Page<Owner> ownersResults = findPaginatedForOwners(page, owner.getLastName(), owner.getCity());
 		if (ownersResults.isEmpty()) {
 			// no owners found
 			result.rejectValue("lastName", "notFound", "not found");
@@ -124,10 +129,18 @@ class OwnerController {
 		return "owners/ownersList";
 	}
 
-	private Page<Owner> findPaginatedForOwnersLastName(int page, String lastname) {
+	private Page<Owner> findPaginatedForOwners(int page, String lastname, String city) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		return owners.findByLastNameStartingWith(lastname, pageable);
+
+		// If city is provided and not empty, search by both lastname and city
+		if (city != null && !city.trim().isEmpty()) {
+			return owners.findByLastNameStartingWithAndCityStartingWith(lastname, city, pageable);
+		}
+		else {
+			// Otherwise, search by lastname only (existing behavior)
+			return owners.findByLastNameStartingWith(lastname, pageable);
+		}
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")
@@ -139,13 +152,13 @@ class OwnerController {
 	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
 			RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
-			redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "There was an error in updating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
 		if (owner.getId() != ownerId) {
 			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
-			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
+			redirectAttributes.addFlashAttribute(FLASH_ERROR, "Owner ID mismatch. Please try again.");
 			return "redirect:/owners/{ownerId}/edit";
 		}
 

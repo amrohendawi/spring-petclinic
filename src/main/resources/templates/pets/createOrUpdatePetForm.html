@@ -4,11 +4,12 @@
 <body>
 
   <h2>
-    <th:block th:if="${pet['new']}" th:text="#{new}">New </th:block>
+    <th:block th:if="${pet.newPet}" th:text="#{new}">New </th:block>
     <span th:text="#{pet}">Pet</span>
   </h2>
   <form th:object="${pet}" class="form-horizontal" method="post">
     <input type="hidden" name="id" th:value="*{id}" />
+    <input type="hidden" name="isNewPet" th:value="*{isNewPet}" />
     <div class="form-group has-feedback">
       <div class="form-group">
         <label class="col-sm-2 control-label" th:text="#{owner}">Owner</label>
@@ -26,7 +27,7 @@
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <button
-          th:with="text=${pet['new']} ? 'Add Pet' : 'Update Pet'"
+          th:with="text=${pet.newPet} ? 'Add Pet' : 'Update Pet'"
           class="btn btn-primary" type="submit" th:text="${text}">Add Pet</button>
       </div>
     </div>
