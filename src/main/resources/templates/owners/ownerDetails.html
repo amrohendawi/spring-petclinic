@@ -2,8 +2,10 @@
 
 <html xmlns:th="https://www.thymeleaf.org"
   th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
-
-  <body>
+<head>
+  <title th:text="#{ownerDetails}">Owner Details</title>
+</head>
+<body>
   
   
     <h2 th:text="#{ownerInformation}">Owner Information</h2>
@@ -42,15 +44,13 @@
       Owner</a>
     <a th:href="@{__${owner.id}__/pets/new}" class="btn btn-primary" th:text="#{addNewPet}">Add
       New Pet</a>
-  
     <br />
     <br />
     <br />
     <h2 th:text="#{petsAndVisits}">Pets and Visits</h2>
   
-    <table class="table table-striped">
-  
-      <tr th:each="pet : ${owner.pets}">
+    <table class="table table-striped" th:each="pet : ${owner.pets}">
+      <tr>
         <td valign="top">
           <dl class="dl-horizontal">
             <dt th:text="#{name}">Name</dt>
@@ -68,28 +68,28 @@
               <tr>
                 <th th:text="#{visitDate}">Visit Date</th>
                 <th th:text="#{description}">Description</th>
-                <th th:text="#{actions}">Actions</th>
               </tr>
             </thead>
             <tr th:each="visit : ${pet.visits}">
               <td th:text="${#temporals.format(visit.date, 'yyyy-MM-dd')}"></td>
               <td th:text="${visit?.description}"></td>
-              <td></td>
             </tr>
             <tr>
-              <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/edit}" th:text="#{editPet}">Edit Pet</a></td>
-              <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" th:text="#{addVisit}">Add Visit</a></td>
-              <td>
+              <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/edit}" th:text="#{editPet}">Edit Pet</a></td>              <td><a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" th:text="#{addVisit}">Add Visit</a></td>
+            </tr>
+            <tr>
+              <td colspan="2" style="text-align: center; padding-top: 10px;">
                 <a th:href="@{__${owner.id}__/pets/__${pet.id}__/visits/new}" 
                    class="btn btn-primary btn-sm" 
-                   th:title="#{scheduleVisitTooltip}" 
-                   th:text="#{scheduleVisit}">Schedule Visit</a>
+                   style="background-color: #6db33f; border-color: #5fa134;"
+                   th:title="#{scheduleVisitTooltip}">
+                  <span class="fa fa-calendar"></span> <span th:text="#{scheduleVisit}">Schedule Visit</span>
+                </a>
               </td>
             </tr>
           </table>
         </td>
       </tr>
-  
     </table>
     <script>
     // Function to hide the success and error messages after 3 seconds
