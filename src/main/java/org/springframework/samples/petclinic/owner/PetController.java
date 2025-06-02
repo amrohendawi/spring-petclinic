@@ -70,7 +70,9 @@ class PetController {
 			@PathVariable(name = "petId", required = false) Integer petId) {
 
 		if (petId == null) {
-			return new Pet();
+			Pet newPet = new Pet();
+			newPet.setNewPet(true);
+			return newPet;
 		}
 
 		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
@@ -92,6 +94,7 @@ class PetController {
 	@GetMapping("/pets/new")
 	public String initCreationForm(Owner owner, ModelMap model) {
 		Pet pet = new Pet();
+		pet.setNewPet(true);
 		owner.addPet(pet);
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
@@ -100,7 +103,7 @@ class PetController {
 	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
 			RedirectAttributes redirectAttributes) {
 
-		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null)
+		if (StringUtils.hasText(pet.getName()) && pet.isNewPet() && owner.getPet(pet.getName(), true) != null)
 			result.rejectValue("name", "duplicate", "already exists");
 
 		LocalDate currentDate = LocalDate.now();
@@ -112,6 +115,7 @@ class PetController {
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 
+		pet.setNewPet(false);
 		owner.addPet(pet);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
