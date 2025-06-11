@@ -61,6 +61,9 @@ class PetControllerTests {
 	@MockitoBean
 	private OwnerRepository owners;
 
+	@MockitoBean
+	private PetPhotoService petPhotoService;
+
 	@BeforeEach
 	void setup() {
 		PetType cat = new PetType();
