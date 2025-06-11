@@ -49,6 +49,7 @@ CREATE TABLE pets (
   birth_date DATE,
   type_id    INTEGER NOT NULL,
   owner_id   INTEGER,
+  photo_file_name VARCHAR(255),
   is_new_pet BOOLEAN DEFAULT FALSE
 );
 ALTER TABLE pets ADD CONSTRAINT fk_pets_owners FOREIGN KEY (owner_id) REFERENCES owners (id);
