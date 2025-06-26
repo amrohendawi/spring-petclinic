@@ -76,7 +76,8 @@ class PetController {
 
 		if (petId == null) {
 			Pet newPet = new Pet();
-			newPet.setNewPet(true);
+			// No need to call setNewPet(true) - the isNewPet() method checks if getId()
+			// == null
 			return newPet;
 		}
 
@@ -99,7 +100,8 @@ class PetController {
 	@GetMapping("/pets/new")
 	public String initCreationForm(Owner owner, ModelMap model) {
 		Pet pet = new Pet();
-		pet.setNewPet(true);
+		// No need to call setNewPet(true) - the isNewPet() method checks if getId() ==
+		// null
 		owner.addPet(pet);
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
@@ -133,7 +135,7 @@ class PetController {
 			}
 		}
 
-		pet.setNewPet(false);
+		// No need to call setNewPet(false) - the pet will get an ID when saved
 		owner.addPet(pet);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");

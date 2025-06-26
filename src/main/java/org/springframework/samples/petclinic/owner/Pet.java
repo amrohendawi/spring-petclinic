@@ -61,8 +61,6 @@ public class Pet extends NamedEntity {
 	@Column(name = "photo_file_name")
 	private String photoFileName;
 
-	private boolean isNewPet = false;
-
 	public void setBirthDate(LocalDate birthDate) {
 		this.birthDate = birthDate;
 	}
@@ -88,11 +86,7 @@ public class Pet extends NamedEntity {
 	}
 
 	public boolean isNewPet() {
-		return isNewPet;
-	}
-
-	public void setNewPet(boolean isNewPet) {
-		this.isNewPet = isNewPet;
+		return this.getId() == null;
 	}
 
 	public String getPhotoFileName() {

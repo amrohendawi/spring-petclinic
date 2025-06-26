@@ -26,19 +26,19 @@
       
       <!-- Photo upload field -->
       <div class="form-group">
-        <label class="col-sm-2 control-label">Photo</label>
+        <label class="col-sm-2 control-label" th:text="#{photo}">Photo</label>
         <div class="col-sm-10">
           <div th:if="${pet.photoFileName}" class="current-photo" style="margin-bottom: 10px;">
             <img th:src="${pet.photoUrl}" alt="Current pet photo" style="max-width: 150px; max-height: 150px; border-radius: 8px; object-fit: cover;"/>
             <div style="margin-top: 5px;">
               <label>
-                <input type="checkbox" name="removePhoto" value="true"/> Remove current photo
+                <input type="checkbox" name="removePhoto" value="true"/> <span th:text="#{photo.remove}">Remove current photo</span>
               </label>
             </div>
           </div>
           <input type="file" name="photo" accept="image/*" class="form-control"/>
-          <span class="help-block">Supported formats: JPG, PNG, GIF. Max size: 5MB</span>
-          <div th:if="${#fields.hasErrors('photoFileName')}" class="help-block text-danger" th:errors="*{photoFileName}">Photo error</div>
+          <span class="help-block" th:text="#{photo.supported.formats}">Supported formats: JPG, PNG, GIF. Max size: 5MB</span>
+          <div th:if="${#fields.hasErrors('photoFileName')}" class="help-block text-danger" th:errors="*{photoFileName}" th:text="#{photo.error}">Photo error</div>
         </div>
       </div>
     </div>
