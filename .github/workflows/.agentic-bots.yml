@@ -1,0 +1,75 @@
+# Agentic Bots Configuration
+# This file configures which agents are enabled and how they should run
+# Place this file as .agentic-bots.yml in your repository root
+
+# Container registry where agent images are stored
+registry: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
+
+# Agent configurations
+agents:
+  # UTOP Agent - Unit Test Optimization using PITest mutation testing
+  utop:
+    enabled: true
+    image: "utop-agent"
+    version: "latest"
+    # PR labels that trigger this agent
+    triggers:
+      - "agent:utop"
+      - "improve-tests"
+      - "mutation-testing"
+    # Timeout in seconds (30 minutes)
+    timeout: 1800
+    # Required environment variables (must be configured as repository secrets)
+    environment:
+      - "OPENAI_API_KEY"
+      - "GIT_ACCESS_TOKEN"
+      - "GIT_USER_NAME"
+      - "GIT_USER_EMAIL"
+
+  # Technical Debt Agent - SonarQube-based code quality improvements
+  tech-debt:
+    enabled: true
+    image: "tech-debt-agent"
+    version: "latest"
+    # PR labels that trigger this agent
+    triggers:
+      - "agent:tech-debt"
+      - "fix-debt"
+      - "code-quality"
+    # Timeout in seconds (20 minutes)
+    timeout: 1200
+    # Required environment variables
+    environment:
+      - "OPENAI_API_KEY"
+      - "GIT_ACCESS_TOKEN"
+      - "GIT_USER_NAME"
+      - "GIT_USER_EMAIL"
+      - "SONARQUBE_URL"
+      - "SONARQUBE_TOKEN"
+      - "SONARQUBE_PROJECT_KEY"
+
+  # Test Agent - Automated test generation
+  test:
+    enabled: false # Disabled by default
+    image: "test-agent"
+    version: "latest"
+    triggers:
+      - "agent:test"
+      - "generate-tests"
+    timeout: 1500
+    environment:
+      - "OPENAI_API_KEY"
+      - "GIT_ACCESS_TOKEN"
+      - "GIT_USER_NAME"
+      - "GIT_USER_EMAIL"
+
+# Global settings (optional)
+settings:
+  # Maximum number of agents that can run concurrently
+  max_concurrent_agents: 3
+
+  # Default timeout if not specified for an agent (in seconds)
+  default_timeout: 1800
+
+  # Whether to run agents on draft PRs
+  run_on_draft: false
