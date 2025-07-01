@@ -1,75 +1,60 @@
-# Agentic Bots Configuration
-# This file configures which agents are enabled and how they should run
-# Place this file as .agentic-bots.yml in your repository root
+name: Agentic Bots
 
-# Container registry where agent images are stored
-registry: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
+on:
+  pull_request:
+    types: [opened, synchronize, labeled]
 
-# Agent configurations
-agents:
-  # UTOP Agent - Unit Test Optimization using PITest mutation testing
-  utop:
-    enabled: true
-    image: "utop-agent"
-    version: "latest"
-    # PR labels that trigger this agent
-    triggers:
-      - "agent:utop"
-      - "improve-tests"
-      - "mutation-testing"
-    # Timeout in seconds (30 minutes)
-    timeout: 1800
-    # Required environment variables (must be configured as repository secrets)
-    environment:
-      - "OPENAI_API_KEY"
-      - "GIT_ACCESS_TOKEN"
-      - "GIT_USER_NAME"
-      - "GIT_USER_EMAIL"
+env:
+  REGISTRY: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
 
-  # Technical Debt Agent - SonarQube-based code quality improvements
-  tech-debt:
-    enabled: true
-    image: "tech-debt-agent"
-    version: "latest"
-    # PR labels that trigger this agent
-    triggers:
-      - "agent:tech-debt"
-      - "fix-debt"
-      - "code-quality"
-    # Timeout in seconds (20 minutes)
-    timeout: 1200
-    # Required environment variables
-    environment:
-      - "OPENAI_API_KEY"
-      - "GIT_ACCESS_TOKEN"
-      - "GIT_USER_NAME"
-      - "GIT_USER_EMAIL"
-      - "SONARQUBE_URL"
-      - "SONARQUBE_TOKEN"
-      - "SONARQUBE_PROJECT_KEY"
+jobs:
+  utop-agent:
+    name: UTOP Agent - Unit Test Optimization
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'agent:utop') || contains(github.event.pull_request.labels.*.name, 'improve-tests') || contains(github.event.pull_request.labels.*.name, 'mutation-testing')
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots/utop-agent:latest
+    steps:
+      - name: Run UTOP Agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: echo "UTOP Agent would run here"
 
-  # Test Agent - Automated test generation
-  test:
-    enabled: false # Disabled by default
-    image: "test-agent"
-    version: "latest"
-    triggers:
-      - "agent:test"
-      - "generate-tests"
-    timeout: 1500
-    environment:
-      - "OPENAI_API_KEY"
-      - "GIT_ACCESS_TOKEN"
-      - "GIT_USER_NAME"
-      - "GIT_USER_EMAIL"
+  tech-debt-agent:
+    name: Technical Debt Agent - SonarQube-based improvements
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'agent:tech-debt') || contains(github.event.pull_request.labels.*.name, 'fix-debt') || contains(github.event.pull_request.labels.*.name, 'code-quality')
+    timeout-minutes: 20
+    container:
+      image: ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots/tech-debt-agent:latest
+    steps:
+      - name: Run Tech Debt Agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+          SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
+          SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          SONARQUBE_PROJECT_KEY: ${{ secrets.SONARQUBE_PROJECT_KEY }}
+        run: echo "Tech Debt Agent would run here"
 
-# Global settings (optional)
-settings:
-  # Maximum number of agents that can run concurrently
-  max_concurrent_agents: 3
-
-  # Default timeout if not specified for an agent (in seconds)
-  default_timeout: 1800
-
-  # Whether to run agents on draft PRs
-  run_on_draft: false
+  test-agent:
+    name: Test Agent - Automated test generation
+    runs-on: ubuntu-latest
+    if: false  # Disabled by default - change to enable
+    timeout-minutes: 25
+    container:
+      image: ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots/test-agent:latest
+    steps:
+      - name: Run Test Agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+          GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+          GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+        run: echo "Test Agent would run here"
