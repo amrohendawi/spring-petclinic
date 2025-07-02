@@ -89,4 +89,18 @@ class PetPhotoServiceTest {
 		assertThat(result).endsWith(".jpg");
 	}
 
+	@Test
+	void shouldRejectFileOneByteOverMaxAllowedSize() {
+		// given
+		PetPhotoService service = new PetPhotoService();
+		// Create a file that is exactly 5MB + 1 byte
+		byte[] overBoundaryContent = new byte[5 * 1024 * 1024 + 1];
+		MockMultipartFile overBoundaryFile = new MockMultipartFile("photo", "overboundary.jpg", "image/jpeg",
+				overBoundaryContent);
+
+		// when & then
+		assertThatThrownBy(() -> service.uploadPhoto(overBoundaryFile)).isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("File size exceeds maximum limit");
+	}
+
 }
