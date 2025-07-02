@@ -39,9 +39,7 @@ jobs:
     
     if: |
       github.event_name == 'pull_request' && (
-        contains(github.event.pull_request.labels.*.name, 'utop-agent') ||
-        contains(github.event.pull_request.labels.*.name, 'code-review') ||
-        contains(github.event.pull_request.labels.*.name, 'needs-review')
+        contains(github.event.pull_request.labels.*.name, 'WRITE_TESTS')
       )
     
     steps:
@@ -110,14 +108,38 @@ jobs:
         run: |
           echo "📦 Assembling UTOP payload..."
           
-          # Get changed files for analysis
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.ref }} | jq -R -s -c 'split("\n")[:-1]')
+          # Escape special characters in title and body for JSON safety
+          PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | jq -R .)
+          PR_BODY=$(echo '${{ github.event.pull_request.body }}' | jq -R .)
           
-          # UTOP-specific payload with code analysis focus  
-          PAYLOAD=$(cat <<EOF
-          {"number": ${{ github.event.pull_request.number }},"title": "${{ github.event.pull_request.title }}","body": "${{ github.event.pull_request.body }}","head": {"ref": "${{ github.event.pull_request.head.ref }}","sha": "${{ github.event.pull_request.head.sha }}","repo": {"clone_url": "${{ github.event.pull_request.head.repo.clone_url }}","name": "${{ github.event.repository.name }}","owner": {"login": "${{ github.repository_owner }}" },"html_url": "${{ github.event.repository.html_url }}" } },"base": {"ref": "${{ github.event.pull_request.base.ref }}","sha": "${{ github.event.pull_request.base.sha }}" },"html_url": "${{ github.event.pull_request.html_url }}" }
-          EOF
-          )
+          # Simple payload structure that matches the working example
+          PAYLOAD=$(jq -n \
+            --argjson number "${{ github.event.pull_request.number }}" \
+            --argjson title "$PR_TITLE" \
+            --argjson body "$PR_BODY" \
+            --arg head_label "${{ github.event.pull_request.head.label }}" \
+            --arg head_ref "${{ github.event.pull_request.head.ref }}" \
+            --arg head_clone_url "${{ github.event.pull_request.head.repo.clone_url }}" \
+            --arg base_label "${{ github.event.pull_request.base.label }}" \
+            --arg base_ref "${{ github.event.pull_request.base.ref }}" \
+            --arg diff_url "${{ github.event.repository.html_url }}/pull/${{ github.event.pull_request.number }}.diff" \
+            '{
+              number: $number,
+              head: {
+                label: $head_label,
+                ref: $head_ref,
+                repo: {
+                  clone_url: $head_clone_url
+                }
+              },
+              base: {
+                label: $base_label,
+                ref: $base_ref
+              },
+              title: $title,
+              body: $body,
+              diff_url: $diff_url
+            }')
           
           # Validate JSON format
           if ! echo "$PAYLOAD" | jq . > /dev/null 2>&1; then
