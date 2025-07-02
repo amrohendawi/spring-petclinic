@@ -15,7 +15,7 @@ env:
   TRIGGER_LABELS: "utop-agent,code-review,needs-review"
 
   # Agent Settings
-  AGENT_TIMEOUT: "300" # 5 minutes - good for most code reviews
+  AGENT_TIMEOUT: "600" # 10 minutes - good for most code reviews
   MAX_RETRIES: "3"
 
   # GitHub Configuration also for docker
