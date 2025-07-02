@@ -106,15 +106,24 @@ jobs:
         run: |
           echo "📦 Assembling UTOP payload..."
 
-          # Escape special characters in title and body for JSON safety
-          PR_TITLE=$(echo '${{ github.event.pull_request.title }}' | jq -R .)
-          PR_BODY=$(echo '${{ github.event.pull_request.body }}' | jq -R .)
+          # Safely escape and handle null values for title and body
+          PR_TITLE='${{ github.event.pull_request.title }}'
+          PR_BODY='${{ github.event.pull_request.body }}'
+          
+          # Handle null/empty values
+          if [ -z "$PR_TITLE" ] || [ "$PR_TITLE" = "null" ]; then
+            PR_TITLE="No title"
+          fi
+          
+          if [ -z "$PR_BODY" ] || [ "$PR_BODY" = "null" ]; then
+            PR_BODY="No description"
+          fi
 
           # Simple payload structure that matches the working example
           PAYLOAD=$(jq -n \
-            --argjson number "${{ github.event.pull_request.number }}" \
-            --argjson title "$PR_TITLE" \
-            --argjson body "$PR_BODY" \
+            --arg number "${{ github.event.pull_request.number }}" \
+            --arg title "$PR_TITLE" \
+            --arg body "$PR_BODY" \
             --arg head_label "${{ github.event.pull_request.head.label }}" \
             --arg head_ref "${{ github.event.pull_request.head.ref }}" \
             --arg head_clone_url "${{ github.event.pull_request.head.repo.clone_url }}" \
@@ -122,7 +131,7 @@ jobs:
             --arg base_ref "${{ github.event.pull_request.base.ref }}" \
             --arg diff_url "${{ github.event.repository.html_url }}/pull/${{ github.event.pull_request.number }}.diff" \
             '{
-              number: $number,
+              number: ($number | tonumber),
               head: {
                 label: $head_label,
                 ref: $head_ref,
