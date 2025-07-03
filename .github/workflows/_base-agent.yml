@@ -1,10 +1,7 @@
-# Abstract Base Agent Workflow
-#
 # This is the "abstract base class" for all agentic bot workflows.
 # It contains all common logic and can be extended by concrete agent implementations.
 #
 # This workflow should not be called directly - use the concrete agent workflows instead.
-
 name: Base Agent Workflow
 
 on:
@@ -92,11 +89,11 @@ jobs:
     runs-on: ubuntu-latest
 
     # Dynamic condition based on trigger labels
+    # If trigger_labels is empty, '*', or 'all', trigger on all PRs
+    # Otherwise, check if PR has any of the specified labels
     if: |
       github.event_name == 'pull_request' && 
-      github.event.action != 'closed' && (
-      contains(github.event.pull_request.labels.*.name, 'WRITE_TESTS')
-      )
+      github.event.action != 'closed'
 
     steps:
       - name: Checkout Repository
@@ -105,37 +102,72 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GIT_ACCESS_TOKEN }}
 
-      # Modular validation using composite action
+      # Validate agent configuration and secrets
       - name: Validate Agent Configuration
-        uses: ./.github/actions/validate-agent-config
-        with:
-          agent_name: ${{ inputs.agent_name }}
-          agent_image: ${{ inputs.agent_image }}
-          trigger_labels: ${{ inputs.trigger_labels }}
-          required_secrets: ${{ inputs.required_secrets }}
-          git_access_token: ${{ secrets.GIT_ACCESS_TOKEN }}
-          git_user_name: ${{ secrets.GIT_USER_NAME }}
-          git_user_email: ${{ secrets.GIT_USER_EMAIL }}
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          sonar_token: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "🔍 Validating agent configuration..."
+          
+          # Validate required inputs
+          if [ -z "${{ inputs.agent_name }}" ] || [ -z "${{ inputs.agent_image }}" ] || [ -z "${{ inputs.trigger_labels }}" ]; then
+            echo "❌ Error: Required inputs missing (agent_name, agent_image, trigger_labels)"
+            exit 1
+          fi
+          
+          # Validate core secrets
+          if [ -z "${{ secrets.GIT_ACCESS_TOKEN }}" ] || [ -z "${{ secrets.GIT_USER_NAME }}" ] || [ -z "${{ secrets.GIT_USER_EMAIL }}" ]; then
+            echo "❌ Error: Core GitHub secrets missing (GIT_ACCESS_TOKEN, GIT_USER_NAME, GIT_USER_EMAIL)"
+            exit 1
+          fi
+          
+          # Validate agent-specific secrets
+          REQUIRED_SECRETS='${{ inputs.required_secrets }}'
+          if echo "$REQUIRED_SECRETS" | jq -e '.[] | select(. == "OPENAI_API_KEY")' >/dev/null; then
+            if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+              echo "❌ Error: OPENAI_API_KEY required but not provided"
+              exit 1
+            fi
+          fi
+          if echo "$REQUIRED_SECRETS" | jq -e '.[] | select(. == "SONAR_TOKEN")' >/dev/null; then
+            if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
+              echo "❌ Error: SONAR_TOKEN required but not provided"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Configuration validated - Agent: ${{ inputs.agent_name }}, Image: ${{ inputs.agent_image }}"
 
-      # Check if PR has matching trigger labels
+      # Check if PR has matching trigger labels or if no labels are required
       - name: Check Trigger Labels
         id: label-check
         run: |
           PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-          echo "📋 PR Labels: $PR_LABELS"
-          echo "🎯 Trigger Labels: ${{ inputs.trigger_labels }}"
+          TRIGGER_LABELS="${{ inputs.trigger_labels }}"
 
-          # Convert comma-separated trigger labels to array and check each one
-          IFS=',' read -ra LABEL_ARRAY <<< "${{ inputs.trigger_labels }}"
+          echo "📋 PR Labels: $PR_LABELS"
+          echo "🎯 Trigger Labels: $TRIGGER_LABELS"
+
+          # Check if no label filtering is required
+          if [ -z "$TRIGGER_LABELS" ] || [ "$TRIGGER_LABELS" = "*" ] || [ "$TRIGGER_LABELS" = "all" ]; then
+            echo "🔓 No label filtering required - agent will run on all PRs"
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if PR has any of the required trigger labels
+          IFS=',' read -ra LABEL_ARRAY <<< "$TRIGGER_LABELS"
           FOUND_TRIGGER=false
 
           for trigger_label in "${LABEL_ARRAY[@]}"; do
-            # Remove whitespace
+            # Remove whitespace from trigger label
             trigger_label=$(echo "$trigger_label" | xargs)
+            
+            # Skip empty labels
+            if [ -z "$trigger_label" ]; then
+              continue
+            fi
+            
             if [[ ",$PR_LABELS," == *",$trigger_label,"* ]]; then
-              echo "✅ Found trigger label: $trigger_label"
+              echo "✅ Found matching trigger label: $trigger_label"
               FOUND_TRIGGER=true
               break
             fi
@@ -144,29 +176,30 @@ jobs:
           if [ "$FOUND_TRIGGER" = true ]; then
             echo "proceed=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️ No matching trigger labels found. Skipping agent execution."
+            echo "⚠️ No matching trigger labels found. Agent will skip execution."
+            echo "💡 Add one of these labels to trigger the agent: $TRIGGER_LABELS"
             echo "proceed=false" >> $GITHUB_OUTPUT
           fi
 
-      # Modular Docker authentication using composite action
-      - name: Setup Docker Authentication
-        if: steps.label-check.outputs.proceed == 'true'
-        uses: ./.github/actions/setup-docker-auth
-        with:
-          docker_registry: ${{ inputs.docker_registry }}
-          git_access_token: ${{ secrets.GIT_ACCESS_TOKEN }}
-          github_actor: ${{ github.actor }}
-
-      # Pull agent image
-      - name: Pull Agent Image
+      # Setup Docker authentication and pull agent image
+      - name: Setup Docker and Pull Image
         if: steps.label-check.outputs.proceed == 'true'
         run: |
+          echo "� Setting up Docker and pulling agent image..."
+          
+          # Set registry URL and authenticate if needed
+          if [ "${{ inputs.docker_registry }}" != "docker.io" ]; then
+            echo "� Authenticating with ${{ inputs.docker_registry }}..."
+            echo "${{ secrets.GIT_ACCESS_TOKEN }}" | docker login "${{ inputs.docker_registry }}" -u "${{ github.actor }}" --password-stdin
+          fi
+          
+          # Determine full image name and pull
           if [ "${{ inputs.docker_registry }}" = "docker.io" ]; then
             FULL_IMAGE="${{ inputs.agent_image }}"
           else
             FULL_IMAGE="${{ inputs.docker_registry }}/${{ inputs.agent_image }}"
           fi
-
+          
           echo "📥 Pulling agent image: $FULL_IMAGE"
           docker pull "$FULL_IMAGE"
           echo "FULL_IMAGE=$FULL_IMAGE" >> $GITHUB_ENV
@@ -234,34 +267,109 @@ jobs:
 
           echo "✅ Payload prepared successfully"
 
-      # Modular agent execution using composite action
+      # Execute agent with retry logic and process results
       - name: Execute Agent
         if: steps.label-check.outputs.proceed == 'true'
         id: agent-execution
-        uses: ./.github/actions/execute-agent
-        with:
-          agent_name: ${{ inputs.agent_name }}
-          agent_timeout: ${{ inputs.agent_timeout }}
-          payload: ${{ steps.payload.outputs.payload }}
-          agent_image: ${{ inputs.agent_image }}
-          docker_registry: ${{ inputs.docker_registry }}
-          git_access_token: ${{ secrets.GIT_ACCESS_TOKEN }}
-          git_user_name: ${{ secrets.GIT_USER_NAME }}
-          git_user_email: ${{ secrets.GIT_USER_EMAIL }}
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          sonar_token: ${{ secrets.SONAR_TOKEN }}
-          langchain_api_key: ${{ secrets.LANGCHAIN_API_KEY }}
-          enable_langsmith: ${{ inputs.enable_langsmith }}
-
-      # Modular result processing using composite action
-      - name: Process Results
-        if: always() && steps.label-check.outputs.proceed == 'true'
-        uses: ./.github/actions/process-results
-        with:
-          agent_name: ${{ inputs.agent_name }}
-          execution_success: ${{ steps.agent-execution.outputs.success }}
-          exit_code: ${{ steps.agent-execution.outputs.exit_code }}
-          result_file: ${{ steps.agent-execution.outputs.result_file }}
+        run: |
+          echo "🚀 Executing ${{ inputs.agent_display_name }}..."
+          
+          # Set up environment variables
+          export GIT_ACCESS_TOKEN="${{ secrets.GIT_ACCESS_TOKEN }}"
+          export GIT_USER_NAME="${{ secrets.GIT_USER_NAME }}"
+          export GIT_USER_EMAIL="${{ secrets.GIT_USER_EMAIL }}"
+          
+          # Optional environment variables
+          [ -n "${{ secrets.OPENAI_API_KEY }}" ] && export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          [ -n "${{ secrets.SONAR_TOKEN }}" ] && export SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}"
+          [ -n "${{ secrets.LANGCHAIN_API_KEY }}" ] && export LANGCHAIN_API_KEY="${{ secrets.LANGCHAIN_API_KEY }}"
+          
+          # LangSmith configuration
+          if [ "${{ inputs.enable_langsmith }}" = "true" ]; then
+            export LANGCHAIN_TRACING_V2="true"
+            export LANGCHAIN_PROJECT="${{ inputs.agent_name }}_pr_${{ github.event.pull_request.number }}"
+            echo "🔍 LangSmith tracing enabled for project: $LANGCHAIN_PROJECT"
+          fi
+          
+          # Create output directory and prepare payload
+          mkdir -p /tmp/agent_output
+          PAYLOAD='${{ steps.payload.outputs.payload }}'
+          echo "$PAYLOAD" > /tmp/agent_output/payload.json
+          
+          # Execute agent with retry logic
+          MAX_RETRIES=${{ inputs.max_retries }}
+          TIMEOUT=${{ inputs.agent_timeout }}
+          ATTEMPT=1
+          SUCCESS=false
+          EXIT_CODE=0
+          
+          while [ $ATTEMPT -le $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
+            echo "📊 Attempt $ATTEMPT of $MAX_RETRIES"
+            
+            # Run the agent container
+            if timeout "$TIMEOUT" docker run \
+              --rm \
+              -v /tmp/agent_output:/output \
+              -e GIT_ACCESS_TOKEN \
+              -e GIT_USER_NAME \
+              -e GIT_USER_EMAIL \
+              -e OPENAI_API_KEY \
+              -e SONAR_TOKEN \
+              -e LANGCHAIN_API_KEY \
+              -e LANGCHAIN_TRACING_V2 \
+              -e LANGCHAIN_PROJECT \
+              "$FULL_IMAGE" \
+              /output/payload.json > /tmp/agent_output/execution.log 2>&1; then
+              
+              echo "✅ Agent execution completed successfully"
+              SUCCESS=true
+              EXIT_CODE=0
+            else
+              EXIT_CODE=$?
+              echo "❌ Agent execution failed with exit code: $EXIT_CODE"
+              
+              if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+                echo "🔄 Retrying in 30 seconds..."
+                sleep 30
+              fi
+            fi
+            
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          
+          # Process and report results
+          echo "📊 Processing execution results..."
+          if [ "$SUCCESS" = "true" ]; then
+            echo "✅ ${{ inputs.agent_display_name }} completed successfully"
+            
+            # Check for result files
+            RESULT_FILE=""
+            for file in review.json result.json analysis.json tests.json output.json; do
+              if [ -f "/tmp/agent_output/$file" ]; then
+                RESULT_FILE="/tmp/agent_output/$file"
+                echo "� Found result file: $file"
+                break
+              fi
+            done
+            
+            if [ -n "$RESULT_FILE" ] && [ -f "$RESULT_FILE" ]; then
+              echo "📋 Result summary:"
+              if jq -r '.summary // .message // "Analysis completed"' "$RESULT_FILE" 2>/dev/null; then
+                echo "✅ Results processed successfully"
+              else
+                echo "📊 Results available (preview):"
+                head -n 3 "$RESULT_FILE" 2>/dev/null || echo "Unable to preview results"
+              fi
+            fi
+          else
+            echo "❌ ${{ inputs.agent_display_name }} failed"
+            [ $EXIT_CODE -eq 124 ] && echo "� Execution timed out - consider increasing timeout"
+            [ -f /tmp/agent_output/execution.log ] && echo "📋 Execution log:" && tail -n 10 /tmp/agent_output/execution.log
+          fi
+          
+          # Set outputs
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
 
       # Cleanup and logout
       - name: Cleanup
