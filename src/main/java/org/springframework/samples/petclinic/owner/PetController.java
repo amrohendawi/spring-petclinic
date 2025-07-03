@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -48,8 +50,11 @@ class PetController {
 
 	private final OwnerRepository owners;
 
-	public PetController(OwnerRepository owners) {
+	private final PetPhotoService petPhotoService;
+
+	public PetController(OwnerRepository owners, PetPhotoService petPhotoService) {
 		this.owners = owners;
+		this.petPhotoService = petPhotoService;
 	}
 
 	@ModelAttribute("types")
@@ -71,7 +76,8 @@ class PetController {
 
 		if (petId == null) {
 			Pet newPet = new Pet();
-			newPet.setNewPet(true);
+			// No need to call setNewPet(true) - the isNewPet() method checks if getId()
+			// == null
 			return newPet;
 		}
 
@@ -94,13 +100,15 @@ class PetController {
 	@GetMapping("/pets/new")
 	public String initCreationForm(Owner owner, ModelMap model) {
 		Pet pet = new Pet();
-		pet.setNewPet(true);
+		// No need to call setNewPet(true) - the isNewPet() method checks if getId() ==
+		// null
 		owner.addPet(pet);
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/pets/new")
 	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
+			@RequestParam(value = "photo", required = false) MultipartFile photo,
 			RedirectAttributes redirectAttributes) {
 
 		if (StringUtils.hasText(pet.getName()) && pet.isNewPet() && owner.getPet(pet.getName(), true) != null)
@@ -115,7 +123,19 @@ class PetController {
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 
-		pet.setNewPet(false);
+		// Handle photo upload
+		if (photo != null && !photo.isEmpty()) {
+			try {
+				String filename = petPhotoService.uploadPhoto(photo);
+				pet.setPhotoFileName(filename);
+			}
+			catch (Exception e) {
+				result.rejectValue("photoFileName", "upload.error", "Failed to upload photo: " + e.getMessage());
+				return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
+			}
+		}
+
+		// No need to call setNewPet(false) - the pet will get an ID when saved
 		owner.addPet(pet);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
@@ -129,6 +149,8 @@ class PetController {
 
 	@PostMapping("/pets/{petId}/edit")
 	public String processUpdateForm(Owner owner, @Valid Pet pet, BindingResult result,
+			@RequestParam(value = "photo", required = false) MultipartFile photo,
+			@RequestParam(value = "removePhoto", required = false) String removePhoto,
 			RedirectAttributes redirectAttributes) {
 
 		String petName = pet.getName();
@@ -150,6 +172,27 @@ class PetController {
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 
+		// Handle photo removal
+		if ("true".equals(removePhoto)) {
+			petPhotoService.deletePhoto(pet.getPhotoFileName());
+			pet.setPhotoFileName(null);
+		}
+		// Handle photo upload
+		else if (photo != null && !photo.isEmpty()) {
+			try {
+				// Delete old photo if exists
+				if (pet.getPhotoFileName() != null) {
+					petPhotoService.deletePhoto(pet.getPhotoFileName());
+				}
+				String filename = petPhotoService.uploadPhoto(photo);
+				pet.setPhotoFileName(filename);
+			}
+			catch (Exception e) {
+				result.rejectValue("photoFileName", "upload.error", "Failed to upload photo: " + e.getMessage());
+				return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
+			}
+		}
+
 		updatePetDetails(owner, pet);
 		redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
 		return "redirect:/owners/{ownerId}";
@@ -167,6 +210,7 @@ class PetController {
 			existingPet.setName(pet.getName());
 			existingPet.setBirthDate(pet.getBirthDate());
 			existingPet.setType(pet.getType());
+			existingPet.setPhotoFileName(pet.getPhotoFileName());
 		}
 		else {
 			owner.addPet(pet);

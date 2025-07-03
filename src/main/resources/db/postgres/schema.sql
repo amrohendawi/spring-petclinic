@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS pets (
   birth_date DATE,
   type_id    INT NOT NULL REFERENCES types (id),
   owner_id   INT REFERENCES owners (id),
+  photo_file_name TEXT,
   is_new_pet BOOLEAN DEFAULT FALSE
 );
 CREATE INDEX ON pets (name);
