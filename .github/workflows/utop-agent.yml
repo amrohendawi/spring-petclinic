@@ -1,298 +1,42 @@
-# UTOP Agent Example Workflow
+# UTOP Agent Workflow (Concrete Implementation)
 #
-# This is a production-ready configuration for the UTOP Agent (code review agent).
-# Copy this file to .github/workflows/utop-agent.yml in your repository.
+# This workflow extends the abstract base agent workflow with UTOP-specific configuration.
+# It demonstrates inheritance-like behavior by calling the reusable base workflow.
 
 name: UTOP Agent - Code Review
-
-env:
-  # Agent Configuration
-  AGENT_NAME: "utop_agent"
-  AGENT_IMAGE: "utop_agent:latest"
-  DOCKER_REGISTRY: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
-
-  # Trigger Configuration
-  TRIGGER_LABELS: "utop-agent,code-review,needs-review"
-
-  # Agent Settings
-  AGENT_TIMEOUT: "600" # 10 minutes - good for most code reviews
-  MAX_RETRIES: "3"
-
-  # GitHub Configuration also for docker
-  GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
-  GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
-  GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
-
-  # UTOP Agent Secrets
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # Required for LLM analysis
-  LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }} # Optional for LangChain integration4
-  LANGSMITH_TRACING: "true" # Optional for LangSmith tracing
 
 on:
   pull_request:
     types: [labeled, synchronize, reopened]
 
 jobs:
-  utop-review:
-    name: UTOP Code Review
-    runs-on: ubuntu-latest
-
-    if: |
-      github.event_name == 'pull_request' && (
-        contains(github.event.pull_request.labels.*.name, 'WRITE_TESTS')
-      )
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GIT_ACCESS_TOKEN }}
-
-      - name: Validate UTOP Configuration
-        run: |
-          echo "🔍 Validating UTOP agent configuration..."
-
-          if [ -z "$OPENAI_API_KEY" ]; then
-            echo "❌ Error: OPENAI_API_KEY secret is required for UTOP agent"
-            echo "Please add OPENAI_API_KEY to your repository secrets"
-            exit 1
-          fi
-
-          echo "✅ UTOP configuration validation passed"
-
-      - name: Check PR Labels
-        id: check-labels
-        run: |
-          PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
-          echo "📋 PR Labels: $PR_LABELS"
-
-          if [[ ",$PR_LABELS," == *",WRITE_TESTS,"* ]]; then
-            echo "✅ Found UTOP trigger label"
-            echo "match=true" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ No UTOP trigger labels found"
-            exit 0
-          fi
-
-      - name: Setup Docker Authentication
-        if: steps.check-labels.outputs.match == 'true' && env.DOCKER_REGISTRY != 'docker.io'
-        run: |
-          echo "🐳 Authenticating with Docker registry..."
-          # For GHCR, use GitHub token; for other registries, you may need different credentials
-          if [[ "$DOCKER_REGISTRY" == *"ghcr.io"* ]]; then
-            echo "$GIT_ACCESS_TOKEN" | docker login "$DOCKER_REGISTRY" --username "${{ github.actor }}" --password-stdin
-          else
-            echo "⚠️ Non-GHCR registry detected. Ensure DOCKER_USERNAME and DOCKER_PASSWORD secrets are set"
-            # For other registries, you might need different auth mechanism
-          fi
-
-      - name: Pull UTOP Agent Image
-        if: steps.check-labels.outputs.match == 'true'
-        run: |
-          if [ -n "$DOCKER_REGISTRY" ] && [ "$DOCKER_REGISTRY" != "docker.io" ]; then
-            FULL_IMAGE="$DOCKER_REGISTRY/$AGENT_IMAGE"
-          else
-            FULL_IMAGE="$AGENT_IMAGE"
-          fi
-
-          echo "📥 Pulling UTOP agent: $FULL_IMAGE"
-          docker pull "$FULL_IMAGE"
-          echo "FULL_IMAGE=$FULL_IMAGE" >> $GITHUB_ENV
-
-      - name: Assemble UTOP Payload
-        if: steps.check-labels.outputs.match == 'true'
-        id: payload
-        run: |
-          echo "📦 Assembling UTOP payload..."
-
-          # Safely escape and handle null values for title and body
-          PR_TITLE='${{ github.event.pull_request.title }}'
-          PR_BODY='${{ github.event.pull_request.body }}'
-          
-          # Handle null/empty values
-          if [ -z "$PR_TITLE" ] || [ "$PR_TITLE" = "null" ]; then
-            PR_TITLE="No title"
-          fi
-          
-          if [ -z "$PR_BODY" ] || [ "$PR_BODY" = "null" ]; then
-            PR_BODY="No description"
-          fi
-
-          # Simple payload structure that matches the working example
-          PAYLOAD=$(jq -n \
-            --arg number "${{ github.event.pull_request.number }}" \
-            --arg title "$PR_TITLE" \
-            --arg body "$PR_BODY" \
-            --arg head_label "${{ github.event.pull_request.head.label }}" \
-            --arg head_ref "${{ github.event.pull_request.head.ref }}" \
-            --arg head_clone_url "${{ github.event.pull_request.head.repo.clone_url }}" \
-            --arg base_label "${{ github.event.pull_request.base.label }}" \
-            --arg base_ref "${{ github.event.pull_request.base.ref }}" \
-            --arg diff_url "${{ github.event.repository.html_url }}/pull/${{ github.event.pull_request.number }}.diff" \
-            '{
-              number: ($number | tonumber),
-              head: {
-                label: $head_label,
-                ref: $head_ref,
-                repo: {
-                  clone_url: $head_clone_url
-                }
-              },
-              base: {
-                label: $base_label,
-                ref: $base_ref
-              },
-              title: $title,
-              body: $body,
-              diff_url: $diff_url
-            }')
-
-          # Validate JSON format
-          if ! echo "$PAYLOAD" | jq . > /dev/null 2>&1; then
-            echo "❌ Error: Generated payload is not valid JSON"
-            exit 1
-          fi
-
-          # Set the payload as output for the next step (compact format for environment variable)
-          PAYLOAD_COMPACT=$(echo "$PAYLOAD" | jq -c .)
-          echo "payload<<EOF" >> $GITHUB_OUTPUT
-          echo "$PAYLOAD_COMPACT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          echo "✅ UTOP payload assembled"
-          echo "📋 Payload preview:"
-          echo "$PAYLOAD" | jq .
-
-      - name: Run UTOP Analysis
-        if: steps.check-labels.outputs.match == 'true'
-        id: utop-analysis
-        timeout-minutes: 5
-        run: |
-          echo "🤖 Running UTOP code analysis..."
-
-          mkdir -p /tmp/utop_output
-
-          set +e
-          docker run \
-            --rm \
-            --volume /tmp/utop_output:/app/output \
-            --env PAYLOAD='${{ steps.payload.outputs.payload }}' \
-            --env GIT_ACCESS_TOKEN="$GIT_ACCESS_TOKEN" \
-            --env OPENAI_API_KEY="$OPENAI_API_KEY" \
-            --env GIT_USER_NAME="$GIT_USER_NAME" \
-            --env GIT_USER_EMAIL="$GIT_USER_EMAIL" \
-            --env LANGCHAIN_API_KEY="$LANGCHAIN_API_KEY" \
-            --env LANGSMITH_TRACING="$LANGSMITH_TRACING" \
-            "$FULL_IMAGE"
-
-          EXIT_CODE=$?
-          set -e
-
-          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
-
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ UTOP analysis completed successfully"
-            echo "success=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ UTOP analysis failed"
-            echo "success=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check for results in output directory
-          if [ -f "/tmp/utop_output/review.json" ]; then
-            echo "review_file=/tmp/utop_output/review.json" >> $GITHUB_OUTPUT
-          elif [ -f "/tmp/utop_output/result.json" ]; then
-            echo "review_file=/tmp/utop_output/result.json" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Process UTOP Results
-        if: always() && steps.check-labels.outputs.match == 'true'
-        run: |
-          echo "📊 Processing UTOP results..."
-
-          if [ "${{ steps.utop-analysis.outputs.success }}" = "true" ]; then
-            if [ -f "${{ steps.utop-analysis.outputs.review_file }}" ]; then
-              # Extract review summary
-              REVIEW_SUMMARY=$(cat "${{ steps.utop-analysis.outputs.review_file }}" | jq -r '.summary // "Analysis completed"')
-              ISSUES_FOUND=$(cat "${{ steps.utop-analysis.outputs.review_file }}" | jq -r '.issues | length // 0')
-              
-              cat > /tmp/utop_feedback.txt << 'EOF'
-          ## ✅ UTOP Code Review Completed
-
-          **Review Summary:** Analysis completed successfully
-
-          **Issues Found:** See detailed analysis below
-
-          <details>
-          <summary>View Detailed Analysis</summary>
-
-          ```json
-          EOF
-              cat "${{ steps.utop-analysis.outputs.review_file }}" | jq . >> /tmp/utop_feedback.txt
-              cat >> /tmp/utop_feedback.txt << 'EOF'
-          ```
-
-          </details>
-
-          ---
-          🤖 *Generated by UTOP Agent* • Run ID: `${{ github.run_id }}`
-          EOF
-            else
-              cat > /tmp/utop_feedback.txt << 'EOF'
-          ## ✅ UTOP Code Review Completed
-
-          The analysis completed successfully but no detailed results were generated.
-
-          ---
-          🤖 *Generated by UTOP Agent* • Run ID: `${{ github.run_id }}`
-          EOF
-            fi
-          else
-            cat > /tmp/utop_feedback.txt << 'EOF'
-          ## ❌ UTOP Code Review Failed
-
-          The code analysis encountered an error. Please check the workflow logs for details.
-
-          **Error Code:** ${{ steps.utop-analysis.outputs.exit_code }}
-
-          ---
-          🤖 *Generated by UTOP Agent* • Run ID: `${{ github.run_id }}`
-          EOF
-          fi
-
-      - name: Comment on Pull Request
-        if: always() && steps.check-labels.outputs.match == 'true'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GIT_ACCESS_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const feedback = fs.readFileSync('/tmp/utop_feedback.txt', 'utf8');
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ github.event.pull_request.number }},
-              body: feedback
-            });
-
-      - name: Set Status
-        if: always() && steps.check-labels.outputs.match == 'true'
-        run: |
-          if [ "${{ steps.utop-analysis.outputs.success }}" = "true" ]; then
-            echo "✅ UTOP workflow completed successfully"
-            exit 0
-          else
-            echo "❌ UTOP workflow failed"
-            exit 1
-          fi
-
-      - name: Cleanup
-        if: always()
-        run: |
-          rm -f /tmp/utop_feedback.txt
-          # Logout from Docker registry if we authenticated
-          if [[ "$DOCKER_REGISTRY" != "docker.io" ]] && [[ -n "$DOCKER_REGISTRY" ]]; then
-            docker logout "$DOCKER_REGISTRY" 2>/dev/null || true
-          fi
+  utop-agent:
+    # Call the abstract base workflow with UTOP-specific parameters
+    uses: ./.github/workflows/_base-agent.yml
+    with:
+      # Agent Identity
+      agent_name: "utop_agent"
+      agent_image: "utop_agent:latest"
+      agent_display_name: "UTOP Agent - Code Review"
+      
+      # Trigger Configuration
+      trigger_labels: "WRITE_TESTS,utop-agent,code-review"
+      
+      # Runtime Settings
+      agent_timeout: "600"  # 10 minutes - good for most code reviews
+      max_retries: "3"
+      
+      # Docker Configuration
+      docker_registry: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
+      
+      # UTOP-Specific Configuration
+      required_secrets: '["OPENAI_API_KEY"]'
+      enable_langsmith: true
+      
+    secrets:
+      # Pass all secrets to the base workflow
+      GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+      GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+      GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
