@@ -296,9 +296,13 @@ jobs:
           PAYLOAD='${{ steps.payload.outputs.payload }}'
           echo "$PAYLOAD" > /tmp/agent_output/payload.json
           
-          # Fix permissions for Docker container access
-          chmod 755 /tmp/agent_output
-          chmod 644 /tmp/agent_output/payload.json
+          # Fix permissions for Docker container access (more aggressive approach)
+          chmod 777 /tmp/agent_output
+          chmod 666 /tmp/agent_output/payload.json
+          
+          # Verify file creation and permissions
+          ls -la /tmp/agent_output/
+          cat /tmp/agent_output/payload.json | head -c 100
           
           # Execute agent with retry logic
           MAX_RETRIES=${{ inputs.max_retries }}
@@ -322,8 +326,8 @@ jobs:
               -e LANGCHAIN_API_KEY \
               -e LANGCHAIN_TRACING_V2 \
               -e LANGCHAIN_PROJECT \
-              "$FULL_IMAGE" \
-              /output/payload.json > /tmp/agent_output/execution.log 2>&1; then
+              -e AGENT_PAYLOAD="$PAYLOAD" \
+              "$FULL_IMAGE" > /tmp/agent_output/execution.log 2>&1; then
               
               echo "✅ Agent execution completed successfully"
               SUCCESS=true
