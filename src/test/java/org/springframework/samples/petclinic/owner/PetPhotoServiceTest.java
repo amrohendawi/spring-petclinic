@@ -13,9 +13,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Test class for {@link PetPhotoService}
  *
  * Modified to add boundary tests for file size verification. The tests now explicitly
- * create files at the maximum allowed size and just one byte over this limit. This
- * ensures that any mutation modifying the relational operator in the file size check is
- * detected.
+ * create files at one byte below the maximum allowed size, exactly at the maximum allowed
+ * size, and one byte over this limit. This ensures that any mutation modifying the
+ * relational operator in the file size check is detected.
  */
 class PetPhotoServiceTest {
 
@@ -75,22 +75,31 @@ class PetPhotoServiceTest {
 	}
 
 	@Test
-	void shouldAcceptFileExactlyAtMaxAllowedSize() throws Exception {
+	void shouldAcceptFileAtBoundarySizes() throws Exception {
 		// given
 		PetPhotoService service = new PetPhotoService();
 		final int MAX_BYTES = 5 * 1024 * 1024; // Maximum allowed file size (5MB)
-		byte[] boundaryFileContent = new byte[MAX_BYTES];
-		MockMultipartFile boundaryFile = new MockMultipartFile("photo", "boundary.jpg", "image/jpeg",
-				boundaryFileContent);
+
+		// Test file one byte below the maximum allowed size
+		byte[] oneByteBelow = new byte[MAX_BYTES - 1];
+		MockMultipartFile belowBoundaryFile = new MockMultipartFile("photo", "belowBoundary.jpg", "image/jpeg",
+				oneByteBelow);
 
 		// when
-		String result = service.uploadPhoto(boundaryFile);
+		String resultBelow = service.uploadPhoto(belowBoundaryFile);
 
 		// then
-		// If the relational operator is incorrectly modified, this test will fail as a
-		// valid file exactly at the limit must be accepted
-		assertThat(result).isNotNull();
-		assertThat(result).endsWith(".jpg");
+		assertThat(resultBelow).isNotNull();
+		assertThat(resultBelow).endsWith(".jpg");
+
+		// Test file exactly at the maximum allowed size
+		byte[] atBoundary = new byte[MAX_BYTES];
+		MockMultipartFile boundaryFile = new MockMultipartFile("photo", "boundary.jpg", "image/jpeg", atBoundary);
+
+		String resultAt = service.uploadPhoto(boundaryFile);
+
+		assertThat(resultAt).isNotNull();
+		assertThat(resultAt).endsWith(".jpg");
 	}
 
 	@Test
