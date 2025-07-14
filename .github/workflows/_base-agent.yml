@@ -296,6 +296,10 @@ jobs:
           PAYLOAD='${{ steps.payload.outputs.payload }}'
           echo "$PAYLOAD" > /tmp/agent_output/payload.json
           
+          # Fix permissions for Docker container access
+          chmod 755 /tmp/agent_output
+          chmod 644 /tmp/agent_output/payload.json
+          
           # Execute agent with retry logic
           MAX_RETRIES=${{ inputs.max_retries }}
           TIMEOUT=${{ inputs.agent_timeout }}
