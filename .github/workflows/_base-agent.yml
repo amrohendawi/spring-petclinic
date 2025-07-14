@@ -326,7 +326,7 @@ jobs:
               -e LANGCHAIN_API_KEY \
               -e LANGCHAIN_TRACING_V2 \
               -e LANGCHAIN_PROJECT \
-              -e AGENT_PAYLOAD="$PAYLOAD" \
+              -e PAYLOAD="$PAYLOAD" \
               "$FULL_IMAGE" > /tmp/agent_output/execution.log 2>&1; then
               
               echo "✅ Agent execution completed successfully"
