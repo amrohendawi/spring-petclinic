@@ -58,7 +58,7 @@ on:
         description: "Enable LangSmith tracing"
         required: false
         type: boolean
-        default: false
+        default: true
 
     secrets:
       # Core GitHub Integration (required for all agents)
@@ -91,9 +91,15 @@ jobs:
     # Dynamic condition based on trigger labels
     # If trigger_labels is empty, '*', or 'all', trigger on all PRs
     # Otherwise, check if PR has any of the specified labels
+    # Prevent infinite loops by excluding commits made by bots
     if: |
       github.event_name == 'pull_request' && 
-      github.event.action != 'closed'
+      github.event.action != 'closed' &&
+      !contains(github.event.pull_request.head.commit.message, '[bot]') &&
+      !contains(github.event.pull_request.head.commit.message, '[skip ci]') &&
+      github.event.pull_request.head.commit.author.name != 'github-actions[bot]' &&
+      github.event.pull_request.head.commit.author.name != 'utop-agent' &&
+      github.event.pull_request.head.commit.author.name != 'tech-debt-bot'
 
     steps:
       - name: Checkout Repository
@@ -136,9 +142,41 @@ jobs:
           
           echo "✅ Configuration validated - Agent: ${{ inputs.agent_name }}, Image: ${{ inputs.agent_image }}"
 
+      # Prevent infinite loops by checking recent commits
+      - name: Check for Bot Commits
+        id: bot-check
+        run: |
+          echo "🔄 Checking for recent bot commits to prevent infinite loops..."
+          
+          # Get the last 5 commits on the PR branch
+          RECENT_COMMITS=$(git log --oneline -5 --pretty=format:"%an|%s" HEAD)
+          echo "Recent commits:"
+          echo "$RECENT_COMMITS"
+          
+          # Check if any recent commits are from bots
+          BOT_COMMIT_FOUND=false
+          while IFS='|' read -r author message; do
+            if [[ "$author" == *"bot"* ]] || [[ "$author" == "github-actions"* ]] || [[ "$author" == "utop-agent" ]] || [[ "$author" == "tech-debt-bot" ]]; then
+              if [[ "$message" == *"[bot]"* ]] || [[ "$message" == *"utop"* ]] || [[ "$message" == *"agent"* ]]; then
+                echo "🛑 Found recent bot commit by $author: $message"
+                BOT_COMMIT_FOUND=true
+                break
+              fi
+            fi
+          done <<< "$RECENT_COMMITS"
+          
+          if [ "$BOT_COMMIT_FOUND" = true ]; then
+            echo "⚠️ Skipping agent execution to prevent infinite loop"
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No recent bot commits found, safe to proceed"
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          fi
+
       # Check if PR has matching trigger labels or if no labels are required
       - name: Check Trigger Labels
         id: label-check
+        if: steps.bot-check.outputs.proceed == 'true'
         run: |
           PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
           TRIGGER_LABELS="${{ inputs.trigger_labels }}"
@@ -183,7 +221,7 @@ jobs:
 
       # Setup Docker authentication and pull agent image
       - name: Setup Docker and Pull Image
-        if: steps.label-check.outputs.proceed == 'true'
+        if: steps.bot-check.outputs.proceed == 'true' && steps.label-check.outputs.proceed == 'true'
         run: |
           echo "� Setting up Docker and pulling agent image..."
           
@@ -206,7 +244,7 @@ jobs:
 
       # Prepare standardized payload for all agents
       - name: Prepare Agent Payload
-        if: steps.label-check.outputs.proceed == 'true'
+        if: steps.bot-check.outputs.proceed == 'true' && steps.label-check.outputs.proceed == 'true'
         id: payload
         run: |
           echo "📦 Preparing agent payload..."
@@ -269,7 +307,7 @@ jobs:
 
       # Execute agent with retry logic and process results
       - name: Execute Agent
-        if: steps.label-check.outputs.proceed == 'true'
+        if: steps.bot-check.outputs.proceed == 'true' && steps.label-check.outputs.proceed == 'true'
         id: agent-execution
         run: |
           echo "🚀 Executing ${{ inputs.agent_display_name }}..."
@@ -290,6 +328,11 @@ jobs:
             export LANGCHAIN_PROJECT="${{ inputs.agent_name }}_pr_${{ github.event.pull_request.number }}"
             echo "🔍 LangSmith tracing enabled for project: $LANGCHAIN_PROJECT"
           fi
+          
+          # Agent commit configuration to prevent infinite loops
+          export AGENT_COMMIT_PREFIX="[bot]"
+          export AGENT_NAME="${{ inputs.agent_name }}"
+          export SKIP_CI_MARKER="[skip ci]"
           
           # Create output directory and prepare payload
           mkdir -p /tmp/agent_output
@@ -327,6 +370,9 @@ jobs:
               -e LANGCHAIN_TRACING_V2 \
               -e LANGCHAIN_PROJECT \
               -e PAYLOAD="$PAYLOAD" \
+              -e AGENT_COMMIT_PREFIX \
+              -e AGENT_NAME \
+              -e SKIP_CI_MARKER \
               "$FULL_IMAGE" > /tmp/agent_output/execution.log 2>&1; then
               
               echo "✅ Agent execution completed successfully"
@@ -393,7 +439,7 @@ jobs:
 
       # Set final workflow status
       - name: Set Final Status
-        if: always() && steps.label-check.outputs.proceed == 'true'
+        if: always() && steps.bot-check.outputs.proceed == 'true' && steps.label-check.outputs.proceed == 'true'
         run: |
           if [ "${{ steps.agent-execution.outputs.success }}" = "true" ]; then
             echo "✅ ${{ inputs.agent_display_name }} completed successfully"
