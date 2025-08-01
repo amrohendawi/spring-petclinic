@@ -92,9 +92,13 @@ class PetPhotoServiceTest {
 		assertThat(resultBelow).isNotNull();
 		assertThat(resultBelow).endsWith(".jpg");
 
-		// Test file exactly at the maximum allowed size
+		// Test file exactly at the maximum allowed size; this assertion explicitly
+		// verifies that
+		// the file is accepted when its size is exactly the limit. If the relational
+		// operator is
+		// mutated (e.g., using '<' instead of '<='), this test will fail.
 		byte[] atBoundary = new byte[MAX_BYTES];
-		MockMultipartFile boundaryFile = new MockMultipartFile("photo", "boundary.jpg", "image/jpeg", atBoundary);
+		MockMultipartFile boundaryFile = new MockMultipartFile("photo", "exactBoundary.jpg", "image/jpeg", atBoundary);
 
 		String resultAt = service.uploadPhoto(boundaryFile);
 
