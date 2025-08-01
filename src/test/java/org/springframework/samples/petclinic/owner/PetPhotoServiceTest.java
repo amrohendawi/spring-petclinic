@@ -118,4 +118,20 @@ class PetPhotoServiceTest {
 			.hasMessageContaining("File size exceeds maximum limit");
 	}
 
+	@Test
+	void shouldAcceptValidPngImageFile() throws Exception {
+		// given
+		PetPhotoService service = new PetPhotoService();
+		// Create a valid PNG file with a size well below the maximum allowed size
+		MockMultipartFile validPng = new MockMultipartFile("photo", "pet.png", "image/png",
+				"fake png content".getBytes());
+
+		// when
+		String result = service.uploadPhoto(validPng);
+
+		// then
+		assertThat(result).isNotNull();
+		assertThat(result).endsWith(".png");
+	}
+
 }
