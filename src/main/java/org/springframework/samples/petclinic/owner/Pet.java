@@ -58,7 +58,8 @@ public class Pet extends NamedEntity {
 	@OrderBy("date ASC")
 	private final Set<Visit> visits = new LinkedHashSet<>();
 
-	private boolean isNewPet = false;
+	@Column(name = "photo_file_name")
+	private String photoFileName;
 
 	public void setBirthDate(LocalDate birthDate) {
 		this.birthDate = birthDate;
@@ -85,11 +86,22 @@ public class Pet extends NamedEntity {
 	}
 
 	public boolean isNewPet() {
-		return isNewPet;
+		return this.getId() == null;
 	}
 
-	public void setNewPet(boolean isNewPet) {
-		this.isNewPet = isNewPet;
+	public String getPhotoFileName() {
+		return this.photoFileName;
+	}
+
+	public void setPhotoFileName(String photoFileName) {
+		this.photoFileName = photoFileName;
+	}
+
+	public String getPhotoUrl() {
+		if (this.photoFileName != null && !this.photoFileName.isEmpty()) {
+			return "/images/pets/" + this.photoFileName;
+		}
+		return "/images/pets/default-pet.svg";
 	}
 
 }

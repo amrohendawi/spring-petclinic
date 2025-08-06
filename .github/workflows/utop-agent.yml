@@ -1,0 +1,42 @@
+# UTOP Agent Workflow (Concrete Implementation)
+#
+# This workflow extends the abstract base agent workflow with UTOP-specific configuration.
+# It demonstrates inheritance-like behavior by calling the reusable base workflow.
+
+name: UTOP Agent - Code Review
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+jobs:
+  utop-agent:
+    # Call the abstract base workflow with UTOP-specific parameters
+    uses: ./.github/workflows/_base-agent.yml
+    with:
+      # Agent Identity
+      agent_name: "utop_agent"
+      agent_image: "utop_agent:latest"
+      agent_display_name: "UTOP Agent - Code Review"
+      
+      # Trigger Configuration
+      trigger_labels: "WRITE_TESTS,utop-agent,code-review"
+      
+      # Runtime Settings
+      agent_timeout: "600"  # 10 minutes - good for most code reviews
+      max_retries: "3"
+      
+      # Docker Configuration
+      docker_registry: "ghcr.io/ki-reply-gmbh/silicon-shoring-agentic-bots"
+      
+      # UTOP-Specific Configuration
+      required_secrets: '["OPENAI_API_KEY"]'
+      enable_langsmith: true
+      
+    secrets:
+      # Pass all secrets to the base workflow
+      GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+      GIT_USER_NAME: ${{ secrets.GIT_USER_NAME }}
+      GIT_USER_EMAIL: ${{ secrets.GIT_USER_EMAIL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
