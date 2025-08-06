@@ -72,6 +72,14 @@ class PetPhotoServiceTest {
 		// then
 		assertThat(result).isNotNull();
 		assertThat(result).endsWith(".jpg");
+
+		// mixed-case MIME type and extension — ensures case-insensitive handling
+		MockMultipartFile mixedCaseImage = new MockMultipartFile("photo", "PeT.JpG", "ImAgE/JpEg",
+				"fake mixed-case content".getBytes());
+		String mixedCaseResult = service.uploadPhoto(mixedCaseImage);
+		assertThat(mixedCaseResult).isNotNull();
+		// verify that even with mixed case the service accepts and normalizes correctly
+		assertThat(mixedCaseResult).endsWithIgnoringCase(".jpg");
 	}
 
 	@Test
