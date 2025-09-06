@@ -48,6 +48,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
 
+// Additional imports for testing NamedEntity and Owner toString behavior
+import org.springframework.samples.petclinic.model.NamedEntity;
+import org.springframework.samples.petclinic.owner.Owner;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = { "spring.docker.compose.skip.in-tests=false", //
 		"spring.docker.compose.start.arguments=--force-recreate,--renew-anon-volumes,postgres" })
 @ActiveProfiles("postgres")
@@ -73,7 +77,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +93,19 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+		// Additional assertions to verify the toString() methods for NamedEntity and
+		// Owner
+		NamedEntity namedEntity = new NamedEntity();
+		namedEntity.setName("SampleName");
+		String namedEntityString = namedEntity.toString();
+		assertThat(namedEntityString).isNotEmpty().contains("SampleName");
+
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerString = owner.toString();
+		assertThat(ownerString).isNotEmpty().contains("John").contains("Doe");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
