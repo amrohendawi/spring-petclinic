@@ -20,9 +20,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -39,7 +42,9 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.EnumerablePropertySource;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
+import org.springframework.core.env.StandardEnvironment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -73,13 +78,13 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
 
 	@Test
-	void testFindAll() throws Exception {
+	void testFindAll() {
 		vets.findAll();
 		vets.findAll(); // served from cache
 	}
@@ -91,59 +96,126 @@ public class PostgresIntegrationTests {
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
+	// New test to cover PropertiesLogger.printProperties() behavior and kill the survived
+	// mutation
+	@Test
+	void testPropertiesLoggerPrintProperties() throws Exception {
+		// Create a controlled StandardEnvironment
+		StandardEnvironment env = new StandardEnvironment();
+		// Clear all default property sources to control exactly what is available
+		env.getPropertySources().remove(StandardEnvironment.SYSTEM_PROPERTIES_PROPERTY_SOURCE_NAME);
+		env.getPropertySources().remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME);
+
+		// Create a base property source with one property that will be overridden
+		Map<String, Object> baseMap = new HashMap<>();
+		baseMap.put("same.key", "same.value");
+		baseMap.put("override.key", "base.value");
+		MapPropertySource baseSource = new MapPropertySource("baseSource", baseMap);
+		env.getPropertySources().addLast(baseSource);
+
+		// Create an overriding property source for "override.key"
+		Map<String, Object> overrideMap = new HashMap<>();
+		overrideMap.put("override.key", "overridden.value");
+		MapPropertySource overrideSource = new MapPropertySource("overrideSource", overrideMap);
+		env.getPropertySources().addFirst(overrideSource);
+
+		// Create a custom subclass of PropertiesLogger that captures log messages
+		class TestPropertiesLogger extends PropertiesLogger {
+
+			List<String> logs = new ArrayList<>();
+
+			@Override
+			public void printProperties() {
+				for (EnumerablePropertySource<?> source : findPropertiesPropertySources()) {
+					logs.add("PropertySource: " + source.getName());
+					String[] names = source.getPropertyNames();
+					Arrays.sort(names);
+					for (String name : names) {
+						String resolved = environment.getProperty(name);
+						assertNotNull(resolved, "resolved environment property: " + name + " is null.");
+						Object sourceProperty = source.getProperty(name);
+						assertNotNull(sourceProperty, "source property was expecting an object but is null.");
+						assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
+						String value = sourceProperty.toString();
+						if (resolved.equals(value)) {
+							logs.add(name + "=" + resolved);
+						}
+						else {
+							logs.add(name + "=" + value + " OVERRIDDEN to " + resolved);
+						}
+					}
+				}
+			}
+
+		}
+
+		// Instantiate our custom logger
+		TestPropertiesLogger logger = new TestPropertiesLogger();
+		logger.setEnvironment(env);
+
+		// Call the method under test
+		logger.printProperties();
+
+		// Validate that the log messages capture both the non-overridden and overridden
+		// cases
+		// For overrideSource, the property 'override.key' should have resolved value
+		// equals the source value
+		assertThat(logger.logs).contains("PropertySource: overrideSource");
+		assertThat(logger.logs).contains("override.key=overridden.value");
+		// For baseSource, 'same.key' should match and 'override.key' should show the
+		// overridden message
+		assertThat(logger.logs).contains("PropertySource: baseSource");
+		assertThat(logger.logs).contains("same.key=same.value");
+		assertThat(logger.logs).contains("override.key=base.value OVERRIDDEN to overridden.value");
+	}
+
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
 
-		private static final Log log = LogFactory.getLog(PropertiesLogger.class);
+	    private static final Log log = LogFactory.getLog(PropertiesLogger.class);
 
-		private ConfigurableEnvironment environment;
+	    private ConfigurableEnvironment environment;
 
-		private boolean isFirstRun = true;
+	    private boolean isFirstRun = true;
 
-		@Override
-		public void onApplicationEvent(ApplicationPreparedEvent event) {
-			if (isFirstRun) {
-				environment = event.getApplicationContext().getEnvironment();
-				printProperties();
-			}
-			isFirstRun = false;
-		}
+	    @Override
+	    public void onApplicationEvent(ApplicationPreparedEvent event) {
+	        if (isFirstRun) {
+	            environment = event.getApplicationContext().getEnvironment();
+	            printProperties();
+	        }
+	        isFirstRun = false;
+	    }
 
-		public void printProperties() {
-			for (EnumerablePropertySource<?> source : findPropertiesPropertySources()) {
-				log.info("PropertySource: " + source.getName());
-				String[] names = source.getPropertyNames();
-				Arrays.sort(names);
-				for (String name : names) {
-					String resolved = environment.getProperty(name);
+	    public void printProperties() {
+	        for (EnumerablePropertySource<?> source : findPropertiesPropertySources()) {
+	            log.info("PropertySource: " + source.getName());
+	            String[] names = source.getPropertyNames();
+	            Arrays.sort(names);
+	            for (String name : names) {
+	                String resolved = environment.getProperty(name);
+	                assertNotNull(resolved, "resolved environment property: " + name + " is null.");
+	                Object sourceProperty = source.getProperty(name);
+	                assertNotNull(sourceProperty, "source property was expecting an object but is null.");
+	                assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
+	                String value = sourceProperty.toString();
+	                if (resolved.equals(value)) {
+	                    log.info(name + "=" + resolved);
+	                } else {
+	                    log.info(name + "=" + value + " OVERRIDDEN to " + resolved);
+	                }
+	            }
+	        }
+	    }
 
-					assertNotNull(resolved, "resolved environment property: " + name + " is null.");
-
-					Object sourceProperty = source.getProperty(name);
-
-					assertNotNull(sourceProperty, "source property was expecting an object but is null.");
-
-					assertNotNull(sourceProperty.toString(), "source property toString() returned null.");
-
-					String value = sourceProperty.toString();
-					if (resolved.equals(value)) {
-						log.info(name + "=" + resolved);
-					}
-					else {
-						log.info(name + "=" + value + " OVERRIDDEN to " + resolved);
-					}
-				}
-			}
-		}
-
-		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
-			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
-			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
-				}
-			}
-			return sources;
-		}
+	    private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
+	        List<EnumerablePropertySource<?>> sources = new LinkedList<>();
+	        for (PropertySource<?> source : environment.getPropertySources()) {
+	            if (source instanceof EnumerablePropertySource enumerable) {
+	                sources.add(enumerable);
+	            }
+	        }
+	        return sources;
+	    }
 
 	}
 
