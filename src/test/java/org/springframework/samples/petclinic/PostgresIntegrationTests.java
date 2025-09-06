@@ -48,6 +48,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
 
+// Modified import for Owner class with the correct package path.
+import org.springframework.samples.petclinic.owner.Owner;
+
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT, properties = { "spring.docker.compose.skip.in-tests=false", //
 		"spring.docker.compose.start.arguments=--force-recreate,--renew-anon-volumes,postgres" })
 @ActiveProfiles("postgres")
@@ -73,7 +76,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +92,21 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	// Added unit test to verify Owner::toString behavior to catch mutations returning
+	// empty string
+	@Test
+	void testOwnerToString() {
+		Owner owner = new Owner();
+		owner.setId(1);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String representation = owner.toString();
+		// Ensure the toString implementation returns a non-empty, meaningful string
+		assertNotNull(representation, "Owner toString() should not return null");
+		assertThat(representation).isNotEmpty();
+		assertThat(representation).contains("John").contains("Doe").contains("1");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
@@ -138,8 +156,8 @@ public class PostgresIntegrationTests {
 		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
 			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
 			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
+				if (source instanceof EnumerablePropertySource) {
+					sources.add((EnumerablePropertySource<?>) source);
 				}
 			}
 			return sources;
