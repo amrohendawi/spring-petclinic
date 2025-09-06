@@ -82,6 +82,9 @@ class ClinicServiceTests {
 		assertThat(owner.getPets()).hasSize(1);
 		assertThat(owner.getPets().get(0).getType()).isNotNull();
 		assertThat(owner.getPets().get(0).getType().getName()).isEqualTo("cat");
+		// Added negative test to ensure that getPet(String) returns null when no pet is
+		// found
+		assertThat(owner.getPet("NonExistingPet")).isNull();
 	}
 
 	@Test
