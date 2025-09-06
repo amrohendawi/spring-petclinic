@@ -44,6 +44,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
+// Added import for NamedEntity to test the toString() behavior
+import org.springframework.samples.petclinic.model.NamedEntity;
+// Added import for Owner to test the toString() behavior for Owner mutated method
+import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
@@ -82,6 +86,17 @@ public class PostgresIntegrationTests {
 	void testFindAll() throws Exception {
 		vets.findAll();
 		vets.findAll(); // served from cache
+
+		// New assertion to validate that NamedEntity.toString() returns a meaningful
+		// string.
+		NamedEntity namedEntity = new NamedEntity();
+		// Assuming the entity has setId and setName methods to set the expected fields
+		namedEntity.setId(1);
+		namedEntity.setName("Test Name");
+		String entityString = namedEntity.toString();
+		assertThat(entityString).as("NamedEntity toString should include the id and name information")
+			.contains("1")
+			.contains("Test Name");
 	}
 
 	@Test
@@ -89,6 +104,19 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+		// New assertion to validate that Owner.toString() returns a meaningful string
+		Owner owner = new Owner();
+		// Assuming Owner has setId, setFirstName and setLastName methods
+		owner.setId(1);
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerString = owner.toString();
+		assertThat(ownerString).as("Owner toString should include the owner's id, first name, and last name")
+			.isNotEmpty()
+			.contains("1")
+			.contains("John")
+			.contains("Doe");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
