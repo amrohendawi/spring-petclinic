@@ -22,6 +22,9 @@ import org.springframework.samples.petclinic.vet.Vet;
 import org.springframework.samples.petclinic.vet.VetRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+// Import for the Unknown class to ensure its method is exercised
+import org.springframework.samples.petclinic.service.Unknown;
+
 /**
  * Integration test of the Service and the Repository layer.
  * <p>
@@ -38,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li><strong>Transaction management</strong>, meaning each test method is executed in
  * its own transaction, which is automatically rolled back by default. Thus, even if tests
  * insert or otherwise change database state, there is no need for a teardown or cleanup
- * script.
+ * script.</li>
  * <li>An {@link org.springframework.context.ApplicationContext ApplicationContext} is
  * also inherited and can be used for explicit bean lookup if necessary.</li>
  * </ul>
@@ -190,6 +193,13 @@ class ClinicServiceTests {
 		assertThat(vet.getNrOfSpecialties()).isEqualTo(2);
 		assertThat(vet.getSpecialties().get(0).getName()).isEqualTo("dentistry");
 		assertThat(vet.getSpecialties().get(1).getName()).isEqualTo("surgery");
+
+		// Added calls to Unknown to ensure the mutated method is exercised
+		Unknown unknown = new Unknown();
+		// Assuming Unknown.square(int) should return the square of its argument
+		assertThat(unknown.square(3)).isEqualTo(9);
+		assertThat(unknown.square(-4)).isEqualTo(16);
+		assertThat(unknown.square(0)).isEqualTo(0);
 	}
 
 	@Test
