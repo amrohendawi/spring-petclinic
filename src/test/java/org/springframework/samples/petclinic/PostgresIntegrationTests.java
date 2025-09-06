@@ -44,6 +44,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.vet.VetRepository;
+import org.springframework.samples.petclinic.owner.Owner;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.DockerClientFactory;
@@ -73,7 +74,7 @@ public class PostgresIntegrationTests {
 			.profiles("postgres") //
 			.properties( //
 					"spring.docker.compose.start.arguments=postgres" //
-			) //
+			)
 			.listeners(new PropertiesLogger()) //
 			.run(args);
 	}
@@ -89,6 +90,15 @@ public class PostgresIntegrationTests {
 		RestTemplate template = builder.rootUri("http://localhost:" + port).build();
 		ResponseEntity<String> result = template.exchange(RequestEntity.get("/owners/1").build(), String.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+		// Additional assertions to verify the toString() implementation of Owner (which
+		// extends NamedEntity)
+		Owner owner = new Owner();
+		owner.setFirstName("John");
+		owner.setLastName("Doe");
+		String ownerString = owner.toString();
+		assertNotNull(ownerString, "Owner toString() returned null.");
+		assertThat(ownerString).isNotEmpty().contains("John").contains("Doe");
 	}
 
 	static class PropertiesLogger implements ApplicationListener<ApplicationPreparedEvent> {
@@ -138,8 +148,8 @@ public class PostgresIntegrationTests {
 		private List<EnumerablePropertySource<?>> findPropertiesPropertySources() {
 			List<EnumerablePropertySource<?>> sources = new LinkedList<>();
 			for (PropertySource<?> source : environment.getPropertySources()) {
-				if (source instanceof EnumerablePropertySource enumerable) {
-					sources.add(enumerable);
+				if (source instanceof EnumerablePropertySource) {
+					sources.add((EnumerablePropertySource<?>) source);
 				}
 			}
 			return sources;
